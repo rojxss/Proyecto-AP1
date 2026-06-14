@@ -14,8 +14,10 @@ export async function solicitarRecuperacionAction(formData: FormData) {
     return { error: 'Ingrese un correo electrónico válido.' }
   }
 
-  // redirectTo debe coincidir con las "Redirect URLs" permitidas en Supabase Auth
-  const redirectTo = `${SITE_URL}/api/auth/callback?next=/recuperar-contrasena/nueva`
+  // Supabase usa flujo implícito para recovery links de Admin API:
+  // redirige con #access_token= en el fragmento → se necesita página cliente.
+  // redirectTo debe estar en Supabase → Auth → URL Configuration → Redirect URLs.
+  const redirectTo = `${SITE_URL}/recuperar-contrasena/confirmar`
 
   try {
     const adminSupabase = await createAdminClient()
