@@ -137,11 +137,31 @@ export default async function PaginaPublica() {
                 )
               })}
             </div>
-            <p className="faq-nota">
-              ¿Tiene cuenta de padre de familia? El <b>asistente virtual</b> dentro de la plataforma responde estas y otras consultas al instante.
-            </p>
           </div>
         )}
+
+        {/* Ayarquín — asistente virtual */}
+        <div className="seccion-ayarquin">
+          <div className="ayarquin-imagen-wrap">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Mascota.png" alt="Ayarquín, mascota de la Escuela Villas de Ayarco" className="ayarquin-img" />
+          </div>
+          <div className="ayarquin-texto">
+            <div className="eyebrow" style={{ color: 'var(--verde-700)' }}>Asistente virtual</div>
+            <h2>¡Hola! Soy Ayarquín 🦉</h2>
+            <p>
+              Soy el asistente virtual oficial de la Escuela Villas de Ayarco. Estoy disponible
+              dentro de la plataforma para responderle al instante sobre horarios, citas,
+              actividades, comunicados y cualquier duda sobre la vida escolar de sus hijos.
+            </p>
+            <p style={{ fontSize: '0.92rem', color: 'var(--tinta-suave)' }}>
+              Represento la sabiduría y el acompañamiento de nuestra institución. ¡Estoy aquí para ayudarle!
+            </p>
+            <a className="btn btn-amarillo" href="/login" style={{ display: 'inline-block', marginTop: '0.4rem' }}>
+              Hablar con Ayarquín
+            </a>
+          </div>
+        </div>
       </main>
 
       <FooterPublico nombre={nombre} lugar={lugar} telefono={telefono} correo={correo} />

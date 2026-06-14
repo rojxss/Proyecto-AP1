@@ -526,6 +526,43 @@ img, svg {
   margin-bottom: 0.6rem;
 }
 
+/* ─── Sección Ayarquín ───────────────────────────────────────────────────── */
+.seccion-ayarquin {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 2.4rem;
+  align-items: center;
+  background: linear-gradient(135deg, var(--verde-900) 0%, var(--verde-700) 100%);
+  border-radius: var(--radio);
+  padding: 2.4rem 2.8rem;
+  color: #fff;
+}
+.ayarquin-imagen-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+.ayarquin-img {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,.35));
+  transition: transform 0.4s cubic-bezier(.34,1.56,.64,1);
+}
+.ayarquin-img:hover { transform: scale(1.07) rotate(-2deg); }
+.seccion-ayarquin .eyebrow { color: var(--amarillo) !important; opacity: 0.9; }
+.seccion-ayarquin h2 { color: #fff; font-size: 1.8rem; margin: 0.3rem 0 0.8rem; }
+.seccion-ayarquin p { color: rgba(255,255,255,.85); line-height: 1.65; margin-bottom: 0.5rem; }
+@media (max-width: 700px) {
+  .seccion-ayarquin {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 2rem 1.4rem;
+    gap: 1.4rem;
+  }
+  .ayarquin-img { width: 150px; height: 150px; }
+}
+
 /* ─── Hover: cards y elementos interactivos de la página pública ─────────── */
 .main-publica .bloque-card {
   transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), box-shadow 0.4s ease;
