@@ -31,12 +31,13 @@ async function crearUsuario(formData: FormData) {
   if (!user) redirect('/login')
 
   const email           = (formData.get('email') as string)?.trim().toLowerCase()
-  const password        = formData.get('password') as string
   const nombre_completo = (formData.get('nombre_completo') as string)?.trim()
   const rol             = formData.get('rol') as Rol
 
-  if (!email || !password || !nombre_completo || !rol) return
-  if (password.length < 8) return
+  if (!email || !nombre_completo || !rol) return
+
+  // Contraseña provisional generada automáticamente (segura, única por usuario)
+  const password = generarPassword()
 
   const { error } = await adminSupabase.auth.admin.createUser({
     email,
@@ -324,7 +325,7 @@ export default async function UsuariosAdminPage({
           <div className="bloque-card" style={{ marginBottom: '1.4rem' }}>
             <h2 style={{ fontSize: '1.05rem', marginBottom: '0.8rem' }}>Crear nuevo usuario</h2>
             <form action={crearUsuario}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.8rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.8rem' }}>
                 <div className="campo">
                   <label htmlFor="nombre_completo">Nombre completo *</label>
                   <input id="nombre_completo" name="nombre_completo" type="text" required maxLength={120} placeholder="Juan Pérez Mora" />
@@ -332,10 +333,6 @@ export default async function UsuariosAdminPage({
                 <div className="campo">
                   <label htmlFor="email">Correo electrónico *</label>
                   <input id="email" name="email" type="email" required maxLength={120} placeholder="correo@ejemplo.com" />
-                </div>
-                <div className="campo">
-                  <label htmlFor="password">Contraseña inicial *</label>
-                  <input id="password" name="password" type="password" required minLength={8} maxLength={72} placeholder="Mínimo 8 caracteres" />
                 </div>
                 <div className="campo">
                   <label htmlFor="rol">Rol *</label>
@@ -347,7 +344,7 @@ export default async function UsuariosAdminPage({
                 </div>
               </div>
               <p style={{ fontSize: '0.78rem', color: 'var(--tinta-suave)', margin: '0.5rem 0' }}>
-                Se enviará un correo de bienvenida con las credenciales al usuario. Puede sugerirle que cambie su contraseña al primer ingreso.
+                Se genera una contraseña provisional aleatoria y se envía por correo al usuario junto con sus datos de acceso.
               </p>
               <button type="submit" className="btn">Crear usuario</button>
             </form>
