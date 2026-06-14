@@ -221,11 +221,33 @@ export default async function ChatbotPadrePage() {
 
   return (
     <div style={{ maxWidth: '720px' }}>
-      <h1 style={{ fontSize: '1.6rem', marginBottom: '0.3rem' }}>Asistente virtual</h1>
-      <p style={{ color: 'var(--tinta-suave)', fontSize: '0.9rem', marginBottom: '1.4rem' }}>
-        Consulte horarios, publicaciones, citas y cualquier duda sobre la plataforma.
-        El asistente responde únicamente con información de la escuela.
-      </p>
+
+      {/* Encabezado de Ayarquín */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.2rem' }}>
+        {/* Imagen de Ayarquín — reemplazar /ayarquin.png con el archivo real en /public */}
+        <div style={{
+          width: '72px', height: '72px', borderRadius: '50%',
+          background: 'var(--verde-100)', border: '3px solid var(--verde-500)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, overflow: 'hidden',
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/ayarquin.png"
+            alt="Ayarquín"
+            width={72} height={72}
+            style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+          />
+          <span style={{ fontSize: '2.2rem', display: 'none' }} className="ayarquin-fallback">🦉</span>
+        </div>
+        <div>
+          <h1 style={{ fontSize: '1.5rem', marginBottom: '0.1rem' }}>Ayarquín 🦉</h1>
+          <p style={{ color: 'var(--tinta-suave)', fontSize: '0.85rem', margin: 0 }}>
+            Asistente virtual · Escuela Villas de Ayarco
+          </p>
+        </div>
+      </div>
 
       {/* Historial de conversación */}
       <div style={{
@@ -242,9 +264,29 @@ export default async function ChatbotPadrePage() {
         gap: '1rem',
       }}>
         {logs.length === 0 ? (
-          <div style={{ color: 'var(--tinta-suave)', textAlign: 'center', paddingTop: '2rem', fontSize: '0.9rem' }}>
-            ¡Hola! Soy el asistente virtual de la Escuela Villas de Ayarco.<br />
-            Puede preguntarme sobre horarios, citas, publicaciones y más.
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '50%',
+              background: 'var(--verde-100)', border: '2px solid var(--verde-500)',
+              flexShrink: 0, overflow: 'hidden',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/ayarquin.png" alt="" width={36} height={36}
+                style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; const next = e.currentTarget.nextElementSibling as HTMLElement | null; if (next) next.style.display = 'block' }} />
+              <span style={{ fontSize: '1.3rem', display: 'none' }}>🦉</span>
+            </div>
+            <div style={{
+              background: '#fff', border: '1px solid var(--linea)',
+              borderRadius: '4px 16px 16px 16px',
+              padding: '0.75rem 1rem', fontSize: '0.9rem', lineHeight: 1.55,
+              color: 'var(--tinta)',
+            }}>
+              ¡Hola! Soy <strong>Ayarquín</strong> 🦉, el asistente virtual de la Escuela Villas de Ayarco.
+              Estoy aquí para ayudarle a encontrar información sobre horarios, comunicados,
+              actividades y otros servicios de nuestra comunidad educativa. ¿En qué puedo colaborar hoy?
+            </div>
           </div>
         ) : (
           logs.map(log => (
@@ -252,38 +294,36 @@ export default async function ChatbotPadrePage() {
               {/* Mensaje del padre */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.4rem' }}>
                 <div style={{
-                  background: 'var(--verde-700)',
-                  color: '#fff',
+                  background: 'var(--verde-700)', color: '#fff',
                   borderRadius: '16px 16px 4px 16px',
-                  padding: '0.6rem 1rem',
-                  maxWidth: '78%',
-                  fontSize: '0.9rem',
+                  padding: '0.6rem 1rem', maxWidth: '78%', fontSize: '0.9rem',
                 }}>
                   {log.consulta}
                 </div>
               </div>
-              {/* Respuesta del asistente */}
+              {/* Respuesta de Ayarquín */}
               <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '0.5rem' }}>
                 <div style={{
-                  width: '32px', height: '32px', borderRadius: '50%',
-                  background: 'var(--verde-100)', flexShrink: 0,
+                  width: '36px', height: '36px', borderRadius: '50%',
+                  background: 'var(--verde-100)', border: '2px solid var(--verde-500)',
+                  flexShrink: 0, overflow: 'hidden',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1rem',
                 }}>
-                  🏫
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/ayarquin.png" alt="Ayarquín" width={36} height={36}
+                    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; const next = e.currentTarget.nextElementSibling as HTMLElement | null; if (next) next.style.display = 'block' }} />
+                  <span style={{ fontSize: '1.3rem', display: 'none' }}>🦉</span>
                 </div>
                 <div style={{
-                  background: '#fff',
-                  border: '1px solid var(--linea)',
+                  background: '#fff', border: '1px solid var(--linea)',
                   borderRadius: '4px 16px 16px 16px',
-                  padding: '0.6rem 1rem',
-                  maxWidth: '78%',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.5,
+                  padding: '0.6rem 1rem', maxWidth: '78%',
+                  fontSize: '0.9rem', lineHeight: 1.55,
                 }}>
                   {log.respuesta}
                   <div style={{ fontSize: '0.68rem', color: 'var(--tinta-suave)', marginTop: '0.3rem' }}>
-                    {new Date(log.created_at).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })}
+                    Ayarquín · {new Date(log.created_at).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </div>
@@ -299,14 +339,11 @@ export default async function ChatbotPadrePage() {
           type="text"
           maxLength={500}
           required
-          placeholder="Escriba su consulta aquí…"
+          placeholder="Escriba su mensaje para Ayarquín…"
           style={{
-            flex: 1,
-            padding: '0.7rem 1rem',
-            borderRadius: '10px',
-            border: '1.5px solid var(--linea)',
-            fontSize: '0.9rem',
-            outline: 'none',
+            flex: 1, padding: '0.7rem 1rem',
+            borderRadius: '10px', border: '1.5px solid var(--linea)',
+            fontSize: '0.9rem', outline: 'none',
           }}
           autoComplete="off"
         />
@@ -316,8 +353,7 @@ export default async function ChatbotPadrePage() {
       </form>
 
       <p style={{ fontSize: '0.75rem', color: 'var(--tinta-suave)', marginTop: '0.6rem' }}>
-        El asistente responde solo con información de la plataforma. Para consultas complejas,
-        contacte a la secretaría al <strong>2272-4746</strong>.
+        Para consultas que requieran atención personalizada, contacte a la secretaría al <strong>2272-4746</strong>.
       </p>
     </div>
   )
