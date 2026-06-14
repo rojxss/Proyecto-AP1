@@ -421,6 +421,12 @@ img, svg {
   overflow: hidden;
   background: var(--verde-900);
   box-shadow: 0 8px 32px rgba(20,83,43,.22);
+  transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), box-shadow 0.4s ease;
+  cursor: pointer;
+}
+.carrusel-auto:hover {
+  transform: scale(1.04);
+  box-shadow: 0 18px 52px rgba(20,83,43,.32);
 }
 
 .carrusel-auto-img {
