@@ -112,6 +112,27 @@ async function crearServicio(formData: FormData) {
   revalidatePath('/')
 }
 
+async function actualizarFaq(formData: FormData) {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const id        = formData.get('id') as string
+  const pregunta  = (formData.get('pregunta') as string)?.trim()
+  const respuesta = (formData.get('respuesta') as string)?.trim()
+
+  if (!id || !pregunta || !respuesta) return
+
+  await supabase
+    .from('institution_info')
+    .update({ valor: JSON.stringify({ pregunta, respuesta }), validado: true })
+    .eq('id', id)
+
+  revalidatePath('/admin/pagina-publica')
+  revalidatePath('/')
+}
+
 async function eliminarEntrada(formData: FormData) {
   'use server'
   const supabase = await createClient()
@@ -293,7 +314,7 @@ export default async function PaginaPublicaAdminPage() {
         {faqs.length === 0 ? (
           <div className="mensaje-vacio" style={{ fontSize: '0.85rem' }}>No hay preguntas frecuentes.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {faqs.map(f => {
               let pregunta = '', respuesta = ''
               try {
@@ -304,28 +325,38 @@ export default async function PaginaPublicaAdminPage() {
                 pregunta = partes[0] ?? ''; respuesta = partes[1] ?? ''
               }
               return (
-                <div key={f.id} style={{ padding: '0.6rem', background: 'var(--crema)', borderRadius: '8px', border: '1px solid var(--linea)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{pregunta}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--tinta-suave)', marginTop: '0.2rem' }}>{respuesta}</div>
+                <div key={f.id} style={{ padding: '0.75rem', background: 'var(--crema)', borderRadius: '8px', border: '1px solid var(--linea)' }}>
+                  {/* Formulario de edición */}
+                  <form action={actualizarFaq}>
+                    <input type="hidden" name="id" value={f.id} />
+                    <div className="campo" style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.78rem' }}>Pregunta</label>
+                      <input name="pregunta" type="text" maxLength={200} defaultValue={pregunta} required />
                     </div>
-                    <form action={eliminarEntrada}>
-                      <input type="hidden" name="id" value={f.id} />
-                      <ConfirmButton
-                        className="btn btn-peligro"
-                        style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
-                        mensaje="¿Eliminar esta pregunta?"
-                      >
-                        Eliminar
-                      </ConfirmButton>
-                    </form>
-                  </div>
-                  {!f.validado && (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--gris)', marginTop: '0.3rem', display: 'block' }}>
-                      ⚠ Pendiente de validación con secretaría
-                    </span>
-                  )}
+                    <div className="campo" style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.78rem' }}>Respuesta</label>
+                      <textarea name="respuesta" rows={2} defaultValue={respuesta} required style={{ resize: 'vertical' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {!f.validado && (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--gris)' }}>⚠ Pendiente de validación</span>
+                      )}
+                      <button type="submit" className="btn btn-secundario" style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem', marginLeft: 'auto' }}>
+                        Guardar cambios
+                      </button>
+                    </div>
+                  </form>
+                  {/* Botón eliminar (form separado — no se pueden anidar forms) */}
+                  <form action={eliminarEntrada} style={{ marginTop: '0.4rem', textAlign: 'right' }}>
+                    <input type="hidden" name="id" value={f.id} />
+                    <ConfirmButton
+                      className="btn btn-peligro"
+                      style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
+                      mensaje="¿Eliminar esta pregunta?"
+                    >
+                      Eliminar
+                    </ConfirmButton>
+                  </form>
                 </div>
               )
             })}
