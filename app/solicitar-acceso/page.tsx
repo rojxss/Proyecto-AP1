@@ -4,6 +4,7 @@
  * No requiere autenticación. El admin revisa y aprueba desde /admin/usuarios.
  */
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import HeaderInstitucional from '@/components/layout/HeaderInstitucional'
 
@@ -94,9 +95,9 @@ export default async function SolicitarAccesoPage({
                 La administración revisará su solicitud y le enviará sus datos de acceso al correo que indicó.
                 Esto puede tomar uno o dos días hábiles.
               </p>
-              <a href="/" className="btn" style={{ marginTop: '1rem', display: 'inline-block' }}>
+              <Link href="/" className="btn" style={{ marginTop: '1rem', display: 'inline-block' }}>
                 Volver al inicio
-              </a>
+              </Link>
             </div>
           ) : (
             <form action={enviarSolicitud} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
