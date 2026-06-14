@@ -205,10 +205,12 @@ export default async function CitasAdminPage({
                   <td style={{ fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{cita.bloque?.etiqueta}</td>
                   <td style={{ fontSize: '0.82rem' }}>{cita.padre?.nombre_completo}</td>
                   <td style={{ fontSize: '0.82rem' }}>{cita.funcionario?.nombre_completo}</td>
-                  <td style={{ fontSize: '0.82rem', maxWidth: '160px' }}>
-                    {cita.motivo}
+                  <td style={{ fontSize: '0.82rem' }}>
+                    <span title={cita.motivo} style={{ display: 'block', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {cita.motivo}
+                    </span>
                     {cita.motivo_rechazo && (
-                      <span style={{ display: 'block', fontSize: '0.73rem', color: 'var(--rojo)', marginTop: '0.15rem' }}>
+                      <span title={`Rechazo: ${cita.motivo_rechazo}`} style={{ display: 'block', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.73rem', color: 'var(--rojo)', marginTop: '0.15rem' }}>
                         Rechazo: {cita.motivo_rechazo}
                       </span>
                     )}

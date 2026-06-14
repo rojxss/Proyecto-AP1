@@ -397,10 +397,12 @@ export default async function CitasPadrePage({
                   {cita.bloque?.etiqueta}
                 </td>
                 <td style={{ fontSize: '0.85rem' }}>{cita.funcionario?.nombre_completo}</td>
-                <td style={{ fontSize: '0.85rem', maxWidth: '180px' }}>
-                  {cita.motivo}
+                <td style={{ fontSize: '0.85rem' }}>
+                  <span title={cita.motivo} style={{ display: 'block', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {cita.motivo}
+                  </span>
                   {cita.motivo_rechazo && (
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--rojo)', marginTop: '0.2rem' }}>
+                    <span title={`Motivo rechazo: ${cita.motivo_rechazo}`} style={{ display: 'block', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'var(--rojo)', marginTop: '0.2rem' }}>
                       Motivo rechazo: {cita.motivo_rechazo}
                     </span>
                   )}
