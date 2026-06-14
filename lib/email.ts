@@ -1,44 +1,60 @@
 /**
- * Servicio de notificaciones por correo para citas.
- * Usa Resend. Si RESEND_API_KEY no está configurado, solo registra en consola.
- * RF-08: notificar al crear, confirmar, rechazar y cancelar citas.
+ * Servicio de notificaciones por correo usando Gmail SMTP (Nodemailer).
+ * Credenciales en variables de entorno; nunca hardcodeadas.
+ * Si GMAIL_USER no está configurado, solo registra en consola (modo dev).
  */
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
+const NOMBRE_ESCUELA = 'Escuela Villas de Ayarco'
+const GMAIL_USER     = process.env.GMAIL_USER
+const GMAIL_PASS     = process.env.GMAIL_APP_PASSWORD
+
+const transporter = GMAIL_USER && GMAIL_PASS
+  ? nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+    })
   : null
 
-const FROM = process.env.RESEND_FROM_EMAIL ?? 'Plataforma Escolar <onboarding@resend.dev>'
-const NOMBRE_ESCUELA = 'Escuela Villas de Ayarco'
+async function enviar(para: string | string[], asunto: string, texto: string) {
+  if (!transporter) {
+    console.log(`[Email] ${asunto} → ${Array.isArray(para) ? para.join(', ') : para}`)
+    return
+  }
+  await transporter.sendMail({
+    from: `${NOMBRE_ESCUELA} <${GMAIL_USER}>`,
+    to: Array.isArray(para) ? para.join(', ') : para,
+    subject: asunto,
+    text: texto,
+  })
+}
 
-// ── Plantillas de texto plano ─────────────────────────────────────────────────
+// ── Plantillas ────────────────────────────────────────────────────────────────
 
-function plantillaNuevaCita(params: {
+function plantillaNuevaCita(p: {
   nombrePadre: string
   nombreFuncionario: string
   fecha: string
   bloque: string
   motivo: string
 }) {
-  return `
-Se ha solicitado una cita con los siguientes datos:
+  return `Se ha solicitado una cita con los siguientes datos:
 
-  Padre / Madre : ${params.nombrePadre}
-  Funcionario   : ${params.nombreFuncionario}
-  Fecha         : ${params.fecha}
-  Bloque        : ${params.bloque}
-  Motivo        : ${params.motivo}
+  Padre / Madre : ${p.nombrePadre}
+  Funcionario   : ${p.nombreFuncionario}
+  Fecha         : ${p.fecha}
+  Bloque        : ${p.bloque}
+  Motivo        : ${p.motivo}
 
 Estado actual: Pendiente de confirmación.
-
 Si usted es el funcionario/a, ingrese a la plataforma para confirmar o rechazar la solicitud.
 
-— ${NOMBRE_ESCUELA}
-`.trim()
+— ${NOMBRE_ESCUELA}`
 }
 
-function plantillaEstadoCambiado(params: {
+function plantillaEstadoCambiado(p: {
   nombrePadre: string
   nombreFuncionario: string
   fecha: string
@@ -46,22 +62,17 @@ function plantillaEstadoCambiado(params: {
   nuevoEstado: string
   motivoRechazo?: string | null
 }) {
-  let cuerpo = `
-Su cita ha cambiado de estado.
+  let texto = `Su cita ha cambiado de estado.
 
-  Padre / Madre : ${params.nombrePadre}
-  Funcionario   : ${params.nombreFuncionario}
-  Fecha         : ${params.fecha}
-  Bloque        : ${params.bloque}
-  Nuevo estado  : ${params.nuevoEstado}
-`.trim()
+  Padre / Madre : ${p.nombrePadre}
+  Funcionario   : ${p.nombreFuncionario}
+  Fecha         : ${p.fecha}
+  Bloque        : ${p.bloque}
+  Nuevo estado  : ${p.nuevoEstado}`
 
-  if (params.motivoRechazo) {
-    cuerpo += `\n  Motivo de rechazo: ${params.motivoRechazo}`
-  }
-
-  cuerpo += `\n\n— ${NOMBRE_ESCUELA}`
-  return cuerpo
+  if (p.motivoRechazo) texto += `\n  Motivo de rechazo: ${p.motivoRechazo}`
+  texto += `\n\n— ${NOMBRE_ESCUELA}`
+  return texto
 }
 
 // ── Funciones exportadas ──────────────────────────────────────────────────────
@@ -69,7 +80,7 @@ Su cita ha cambiado de estado.
 /**
  * Notifica la creación de una nueva cita a ambas partes.
  */
-export async function notificarNuevaCita(params: {
+export async function notificarNuevaCita(p: {
   emailPadre: string
   emailFuncionario: string
   nombrePadre: string
@@ -78,71 +89,19 @@ export async function notificarNuevaCita(params: {
   bloque: string
   motivo: string
 }) {
-  const cuerpo = plantillaNuevaCita(params)
-  const asunto = `Nueva solicitud de cita — ${params.fecha}`
-
-  if (!resend) {
-    console.log('[Email] Nueva cita →', params.emailPadre, params.emailFuncionario, asunto)
-    return
-  }
+  const texto  = plantillaNuevaCita(p)
+  const asunto = `Nueva solicitud de cita — ${p.fecha}`
 
   await Promise.allSettled([
-    resend.emails.send({
-      from: FROM,
-      to: params.emailPadre,
-      subject: asunto,
-      text: `Estimado/a ${params.nombrePadre},\n\n${cuerpo}`,
-    }),
-    resend.emails.send({
-      from: FROM,
-      to: params.emailFuncionario,
-      subject: asunto,
-      text: `Estimado/a ${params.nombreFuncionario},\n\n${cuerpo}`,
-    }),
+    enviar(p.emailPadre,      asunto, `Estimado/a ${p.nombrePadre},\n\n${texto}`),
+    enviar(p.emailFuncionario, asunto, `Estimado/a ${p.nombreFuncionario},\n\n${texto}`),
   ])
 }
 
 /**
- * Notifica al nuevo usuario sus credenciales de acceso provisionales.
+ * Notifica el cambio de estado de una cita.
  */
-export async function notificarBienvenida(params: {
-  email: string
-  nombre: string
-  passwordProvisional: string
-}) {
-  const url = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://escuela-villas-de-ayarco.vercel.app'
-  const cuerpo = `Su cuenta en la Plataforma Escolar de la ${NOMBRE_ESCUELA} ha sido creada.
-
-Sus datos de acceso son:
-
-  Correo     : ${params.email}
-  Contraseña : ${params.passwordProvisional}
-
-Ingrese en: ${url}
-
-Por seguridad, cambie su contraseña al iniciar sesión por primera vez.
-Use la opción «¿Olvidó su contraseña?» para establecer una nueva clave.
-
-— ${NOMBRE_ESCUELA}`
-
-  if (!resend) {
-    console.log('[Email] Bienvenida →', params.email)
-    return
-  }
-
-  await resend.emails.send({
-    from: FROM,
-    to: params.email,
-    subject: `Bienvenido/a a la Plataforma Escolar — ${NOMBRE_ESCUELA}`,
-    text: `Estimado/a ${params.nombre},\n\n${cuerpo}`,
-  })
-}
-
-/**
- * Notifica el cambio de estado de una cita. Siempre notifica al padre.
- * Si el estado es Cancelada (por el padre), también notifica al funcionario.
- */
-export async function notificarCambioCita(params: {
+export async function notificarCambioCita(p: {
   emailPadre: string
   emailFuncionario?: string
   nombrePadre: string
@@ -152,25 +111,40 @@ export async function notificarCambioCita(params: {
   nuevoEstado: string
   motivoRechazo?: string | null
 }) {
-  const cuerpo = plantillaEstadoCambiado(params)
-  const asunto = `Cita ${params.nuevoEstado.toLowerCase()} — ${params.fecha}`
+  const texto  = plantillaEstadoCambiado(p)
+  const asunto = `Cita ${p.nuevoEstado.toLowerCase()} — ${p.fecha}`
 
-  if (!resend) {
-    console.log('[Email] Cambio cita →', params.emailPadre, asunto)
-    return
-  }
-
-  const destinatarios = [params.emailPadre]
-  if (params.emailFuncionario) destinatarios.push(params.emailFuncionario)
+  const destinatarios = [p.emailPadre]
+  if (p.emailFuncionario) destinatarios.push(p.emailFuncionario)
 
   await Promise.allSettled(
-    destinatarios.map(to =>
-      resend.emails.send({
-        from: FROM,
-        to,
-        subject: asunto,
-        text: `Estimado/a:\n\n${cuerpo}`,
-      })
-    )
+    destinatarios.map(to => enviar(to, asunto, `Estimado/a:\n\n${texto}`))
   )
+}
+
+/**
+ * Notifica al nuevo usuario sus credenciales de acceso provisionales.
+ */
+export async function notificarBienvenida(p: {
+  email: string
+  nombre: string
+  passwordProvisional: string
+}) {
+  const url    = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://escuela-villas-de-ayarco.vercel.app'
+  const asunto = `Bienvenido/a a la Plataforma Escolar — ${NOMBRE_ESCUELA}`
+  const texto  = `Su cuenta en la Plataforma Escolar ha sido creada.
+
+Sus datos de acceso son:
+
+  Correo     : ${p.email}
+  Contraseña : ${p.passwordProvisional}
+
+Ingrese en: ${url}
+
+Por seguridad, cambie su contraseña al iniciar sesión por primera vez.
+Use la opción «¿Olvidó su contraseña?» para establecer una nueva clave.
+
+— ${NOMBRE_ESCUELA}`
+
+  await enviar(p.email, asunto, `Estimado/a ${p.nombre},\n\n${texto}`)
 }
