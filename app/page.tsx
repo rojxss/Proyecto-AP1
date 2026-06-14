@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import HeaderInstitucional from '@/components/layout/HeaderInstitucional'
 import FooterPublico from '@/components/layout/FooterPublico'
 import TablonAvisos from '@/components/publico/TablonAvisos'
+import CarruselEscuela from '@/components/publico/CarruselEscuela'
 import type { InstitutionInfo } from '@/types/database'
 
 // Helpers para extraer valores del mapa clave→valor de institution_info
@@ -79,6 +80,11 @@ export default async function PaginaPublica() {
       <main className="main-publica">
         {/* Tablón de avisos */}
         <TablonAvisos avisos={avisos} />
+
+        <div style={{ height: '1.6rem' }} />
+
+        {/* Carrusel de imágenes */}
+        <CarruselEscuela />
 
         <div style={{ height: '1.6rem' }} />
 
