@@ -66,6 +66,7 @@ async function aprobarSolicitud(formData: FormData) {
   const id     = formData.get('id') as string
   const nombre = (formData.get('nombre') as string)?.trim()
   const correo = (formData.get('correo') as string)?.trim().toLowerCase()
+  const rol    = (formData.get('rol') as Rol) || 'padre'
 
   if (!id || !nombre || !correo) return
 
@@ -75,7 +76,7 @@ async function aprobarSolicitud(formData: FormData) {
     email: correo,
     password,
     email_confirm: true,
-    user_metadata: { rol: 'padre', nombre_completo: nombre },
+    user_metadata: { rol, nombre_completo: nombre },
   })
 
   const nota = error ? 'El correo ya está registrado en el sistema.' : null
@@ -475,16 +476,21 @@ export default async function UsuariosAdminPage({
                       </span>
                       {s.estado === 'pendiente' && (
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <form action={aprobarSolicitud}>
+                          <form action={aprobarSolicitud} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
                             <input type="hidden" name="id"     value={s.id} />
                             <input type="hidden" name="nombre" value={s.nombre_completo} />
                             <input type="hidden" name="correo" value={s.correo} />
+                            <select name="rol" required defaultValue="padre" style={{ fontSize: '0.73rem', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid var(--linea)', background: 'var(--blanco)' }}>
+                              <option value="padre">Padre / Madre</option>
+                              <option value="docente">Docente</option>
+                              <option value="admin">Administrador/a</option>
+                            </select>
                             <ConfirmButton
                               className="btn"
                               style={{ fontSize: '0.73rem', padding: '0.25rem 0.6rem' }}
                               peligro={false}
                               confirmLabel="Aprobar y crear cuenta"
-                              mensaje={`¿Aprobar la solicitud de ${s.nombre_completo}?\n\nSe creará la cuenta con rol de Padre/Madre y se enviará la contraseña provisional al correo ${s.correo}.`}
+                              mensaje={`¿Aprobar la solicitud de ${s.nombre_completo}?\n\nSe creará la cuenta y se enviará la contraseña provisional al correo ${s.correo}.`}
                             >
                               Aprobar
                             </ConfirmButton>

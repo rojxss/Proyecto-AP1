@@ -30,6 +30,8 @@ export default async function PaginaPublica() {
   const servicios = lista(datos, 'servicio')
   const faqs = lista(datos, 'faq')
 
+  const galeriaVisible = val(datos, 'galeria_visible') !== 'false'
+
   const nombre = val(datos, 'nombre') || 'Escuela Villas de Ayarco'
   const lugar = val(datos, 'lugar') || 'La Unión de Cartago'
   const fundacion = val(datos, 'fundacion') || '1991'
@@ -86,7 +88,7 @@ export default async function PaginaPublica() {
         <div style={{ height: '1.6rem' }} />
 
         {/* Historia + Servicios (izquierda) | Galería fotográfica (derecha sticky) */}
-        <div id="escuela" className="seccion-galeria">
+        <div id="escuela" className="seccion-galeria" style={galeriaVisible ? undefined : { gridTemplateColumns: '1fr' }}>
           <div className="galeria-columna-texto">
             <div className="bloque-card">
               <div className="eyebrow">Nuestra historia</div>
@@ -104,10 +106,12 @@ export default async function PaginaPublica() {
               </div>
             </div>
           </div>
-          <div className="galeria-columna-carrusel">
-            <p className="galeria-eyebrow">Galería fotográfica</p>
-            <CarruselEscuela />
-          </div>
+          {galeriaVisible && (
+            <div className="galeria-columna-carrusel">
+              <p className="galeria-eyebrow">Galería fotográfica</p>
+              <CarruselEscuela />
+            </div>
+          )}
         </div>
 
         {/* FAQ */}

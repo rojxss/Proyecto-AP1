@@ -155,6 +155,24 @@ async function actualizarFaq(formData: FormData) {
   revalidatePath('/')
 }
 
+async function toggleGaleriaVisible(formData: FormData) {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const nuevoValor = formData.get('visible') as string
+
+  // Upsert — clave tiene constraint UNIQUE
+  await supabase.from('institution_info').upsert(
+    { clave: 'galeria_visible', valor: nuevoValor, tipo: 'texto', orden: 999, validado: true },
+    { onConflict: 'clave' }
+  )
+
+  revalidatePath('/admin/pagina-publica')
+  revalidatePath('/')
+}
+
 async function eliminarEntrada(formData: FormData) {
   'use server'
   const supabase = await createClient()
@@ -205,6 +223,8 @@ export default async function PaginaPublicaAdminPage() {
   const faqs     = todos.filter(i => i.tipo === 'faq')
   const servicios = todos.filter(i => i.tipo === 'servicio')
 
+  const galeriaVisible = textos.find(t => t.clave === 'galeria_visible')?.valor !== 'false'
+
   const getInfo = (clave: string) => textos.find(t => t.clave === clave)
 
   return (
@@ -213,6 +233,26 @@ export default async function PaginaPublicaAdminPage() {
       <p style={{ color: 'var(--tinta-suave)', fontSize: '0.9rem', marginBottom: '1.4rem' }}>
         Edite la información que se muestra en la página principal sin necesidad de tocar el código.
       </p>
+
+      {/* ── Galería fotográfica ───────────────────────────────────────── */}
+      <div className="bloque-card" style={{ marginBottom: '1.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.05rem', marginBottom: '0.2rem' }}>Galería fotográfica</h2>
+          <p style={{ fontSize: '0.82rem', color: 'var(--tinta-suave)', margin: 0 }}>
+            {galeriaVisible ? 'Visible en la página pública.' : 'Oculta en la página pública.'}
+          </p>
+        </div>
+        <form action={toggleGaleriaVisible}>
+          <input type="hidden" name="visible" value={galeriaVisible ? 'false' : 'true'} />
+          <button
+            type="submit"
+            className={galeriaVisible ? 'btn btn-peligro' : 'btn'}
+            style={{ fontSize: '0.82rem' }}
+          >
+            {galeriaVisible ? 'Desactivar galería' : 'Activar galería'}
+          </button>
+        </form>
+      </div>
 
       {/* ── Datos institucionales ──────────────────────────────────────── */}
       <div className="bloque-card" style={{ marginBottom: '1.4rem' }}>
