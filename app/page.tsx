@@ -56,8 +56,10 @@ export default async function PaginaPublica() {
       <section className="hero">
         <div className="hero-interno">
           <div>
-            <h1>La información de la escuela, <em>en un solo lugar</em></h1>
-            <p className="hero-lema">{lema}</p>
+            <h1>Toda la vida escolar de sus hijos, <em>en un solo lugar</em></h1>
+            <p className="hero-subtitulo">
+              {nombre} acerca horarios, citas, actividades y comunicados a cada familia de nuestra comunidad.
+            </p>
             <a className="btn btn-amarillo" href="/login">Ingresar a la plataforma</a>
             <a
               className="btn"
@@ -68,11 +70,11 @@ export default async function PaginaPublica() {
             </a>
           </div>
           <div className="tarjeta-datos">
-            {direccion && <div><span className="ico">⌖</span><span>{direccion}</span></div>}
-            {telefono && <div><span className="ico">✆</span><span>{telefono}</span></div>}
-            {correo && <div><span className="ico">✉</span><span>{correo}</span></div>}
-            {horarioAtencion && <div><span className="ico">◷</span><span>{horarioAtencion}</span></div>}
-            {directora && <div><span className="ico">👤</span><span>Directora: {directora}</span></div>}
+            {direccion    && <div><span className="ico" aria-hidden="true">⌖</span><span>{direccion}</span></div>}
+            {telefono     && <div><span className="ico" aria-hidden="true">✆</span><span>{telefono}</span></div>}
+            {correo       && <div><span className="ico" aria-hidden="true">✉</span><span>{correo}</span></div>}
+            {horarioAtencion && <div><span className="ico" aria-hidden="true">◷</span><span>{horarioAtencion}</span></div>}
+            {directora    && <div><span className="ico" aria-hidden="true">👤</span><span><strong style={{ fontWeight: 600 }}>Dirección: </strong>{directora}</span></div>}
           </div>
         </div>
       </section>
