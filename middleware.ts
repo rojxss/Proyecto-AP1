@@ -11,7 +11,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 // Rutas que no requieren autenticación
-const RUTAS_PUBLICAS = ['/', '/login', '/recuperar-contrasena']
+const RUTAS_PUBLICAS = ['/', '/login', '/recuperar-contrasena', '/solicitar-acceso']
 // Prefijos de rutas por rol
 const RUTAS_ROL: Record<string, string> = {
   '/padre': 'padre',

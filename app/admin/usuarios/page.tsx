@@ -2,6 +2,7 @@
  * UsuariosAdminPage — /admin/usuarios
  * Gestión completa de usuarios (crear, activar/desactivar),
  * estudiantes (crear) y vínculos padre↔estudiante.
+ * Incluye revisión de solicitudes de acceso del formulario público.
  * RF-02, RF-03, RF-17
  */
 import { redirect } from 'next/navigation'
@@ -9,6 +10,16 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Rol } from '@/types/database'
 import ConfirmButton from '@/components/ui/ConfirmButton'
+import { notificarBienvenida } from '@/lib/email'
+
+// ── Helper: contraseña provisional aleatoria ──────────────────────────────────
+
+function generarPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  let r = ''
+  for (let i = 0; i < 10; i++) r += chars[Math.floor(Math.random() * chars.length)]
+  return r
+}
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -19,21 +30,85 @@ async function crearUsuario(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const email          = (formData.get('email') as string)?.trim().toLowerCase()
-  const password       = formData.get('password') as string
+  const email           = (formData.get('email') as string)?.trim().toLowerCase()
+  const password        = formData.get('password') as string
   const nombre_completo = (formData.get('nombre_completo') as string)?.trim()
-  const rol            = formData.get('rol') as Rol
+  const rol             = formData.get('rol') as Rol
 
   if (!email || !password || !nombre_completo || !rol) return
   if (password.length < 8) return
 
-  // Crear usuario en Supabase Auth (el trigger handle_new_user crea el perfil)
-  await adminSupabase.auth.admin.createUser({
+  const { error } = await adminSupabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: { rol, nombre_completo },
   })
+
+  if (!error) {
+    try {
+      await notificarBienvenida({ email, nombre: nombre_completo, passwordProvisional: password })
+    } catch { /* no interrumpir si el correo falla */ }
+  }
+
+  revalidatePath('/admin/usuarios')
+}
+
+async function aprobarSolicitud(formData: FormData) {
+  'use server'
+  const supabase      = await createClient()
+  const adminSupabase = await createAdminClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const id     = formData.get('id') as string
+  const nombre = (formData.get('nombre') as string)?.trim()
+  const correo = (formData.get('correo') as string)?.trim().toLowerCase()
+
+  if (!id || !nombre || !correo) return
+
+  const password = generarPassword()
+
+  const { error } = await adminSupabase.auth.admin.createUser({
+    email: correo,
+    password,
+    email_confirm: true,
+    user_metadata: { rol: 'padre', nombre_completo: nombre },
+  })
+
+  const nota = error ? 'El correo ya está registrado en el sistema.' : null
+
+  try {
+    if (!error) {
+      await notificarBienvenida({ email: correo, nombre, passwordProvisional: password })
+    }
+  } catch { /* no interrumpir si el correo falla */ }
+
+  await supabase
+    .from('access_requests')
+    .update({
+      estado: error ? 'rechazada' : 'aprobada',
+      procesado_en: new Date().toISOString(),
+      ...(nota ? { notas_admin: nota } : {}),
+    })
+    .eq('id', id)
+
+  revalidatePath('/admin/usuarios')
+}
+
+async function rechazarSolicitud(formData: FormData) {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const id = formData.get('id') as string
+  if (!id) return
+
+  await supabase
+    .from('access_requests')
+    .update({ estado: 'rechazada', procesado_en: new Date().toISOString() })
+    .eq('id', id)
 
   revalidatePath('/admin/usuarios')
 }
@@ -44,7 +119,7 @@ async function toggleActivoUsuario(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const id = formData.get('id') as string
+  const id         = formData.get('id') as string
   const nuevoActivo = formData.get('activo') === 'true'
   if (!id) return
 
@@ -108,7 +183,7 @@ async function eliminarVinculo(formData: FormData) {
   revalidatePath('/admin/usuarios')
 }
 
-// ── Tipos locales ────────────────────────────────────────────────────────────
+// ── Tipos locales ─────────────────────────────────────────────────────────────
 
 interface ProfileRow {
   id: string
@@ -116,7 +191,6 @@ interface ProfileRow {
   nombre_completo: string
   activo: boolean
   created_at: string
-  email?: string
 }
 
 interface StudentRow {
@@ -134,10 +208,21 @@ interface VinculoRow {
   estudiante: { nombre_completo: string; grupo: string }
 }
 
+interface SolicitudRow {
+  id: string
+  nombre_completo: string
+  correo: string
+  telefono: string | null
+  info_adicional: string | null
+  estado: string
+  created_at: string
+  notas_admin: string | null
+}
+
 const LABEL_ROL: Record<Rol, string> = {
-  admin: 'Administrador/a',
+  admin:   'Administrador/a',
   docente: 'Docente',
-  padre: 'Padre/Madre',
+  padre:   'Padre/Madre',
 }
 
 // ── Página ────────────────────────────────────────────────────────────────────
@@ -158,31 +243,37 @@ export default async function UsuariosAdminPage({
     { data: perfilesRaw },
     { data: estudiantesRaw },
     { data: vinculosRaw },
+    { data: solicitudesRaw },
   ] = await Promise.all([
     supabase.from('profiles').select('id, rol, nombre_completo, activo, created_at').order('nombre_completo'),
     supabase.from('students').select('id, nombre_completo, nivel, grupo, activo').order('nombre_completo'),
     supabase.from('parent_student').select(`padre_id, estudiante_id, padre:profiles!padre_id(nombre_completo), estudiante:students!estudiante_id(nombre_completo, grupo)`),
+    supabase.from('access_requests').select('*').order('created_at', { ascending: false }),
   ])
 
-  const perfiles    = (perfilesRaw ?? []) as ProfileRow[]
+  const perfiles    = (perfilesRaw    ?? []) as ProfileRow[]
   const estudiantes = (estudiantesRaw ?? []) as StudentRow[]
-  const vinculos    = (vinculosRaw ?? []) as unknown as VinculoRow[]
+  const vinculos    = (vinculosRaw    ?? []) as unknown as VinculoRow[]
+  const solicitudes = (solicitudesRaw ?? []) as SolicitudRow[]
 
   const padres   = perfiles.filter(p => p.rol === 'padre')
   const docentes = perfiles.filter(p => p.rol === 'docente')
   const admins   = perfiles.filter(p => p.rol === 'admin')
 
+  const pendientes = solicitudes.filter(s => s.estado === 'pendiente').length
+
   const TABS = [
-    { id: 'usuarios', label: `Usuarios (${perfiles.length})` },
-    { id: 'estudiantes', label: `Estudiantes (${estudiantes.length})` },
-    { id: 'vinculos', label: `Vínculos (${vinculos.length})` },
+    { id: 'usuarios',     label: `Usuarios (${perfiles.length})` },
+    { id: 'solicitudes',  label: `Solicitudes${pendientes > 0 ? ` (${pendientes} nueva${pendientes > 1 ? 's' : ''})` : ''}` },
+    { id: 'estudiantes',  label: `Estudiantes (${estudiantes.length})` },
+    { id: 'vinculos',     label: `Vínculos (${vinculos.length})` },
   ]
 
   return (
     <div>
       <h1 style={{ fontSize: '1.6rem', marginBottom: '0.3rem' }}>Usuarios y vínculos</h1>
       <p style={{ color: 'var(--tinta-suave)', fontSize: '0.9rem', marginBottom: '1.2rem' }}>
-        Gestione cuentas, estudiantes y los vínculos entre padres e hijos.
+        Gestione cuentas, solicitudes de acceso, estudiantes y vínculos padre-hijo.
       </p>
 
       {/* Tabs */}
@@ -199,17 +290,27 @@ export default async function UsuariosAdminPage({
               background: tab === t.id ? 'var(--verde-700)' : 'transparent',
               color: tab === t.id ? '#fff' : 'var(--tinta)',
               fontSize: '0.88rem',
+              position: 'relative',
             }}
           >
             {t.label}
+            {t.id === 'solicitudes' && pendientes > 0 && (
+              <span style={{
+                position: 'absolute', top: '-4px', right: '-4px',
+                background: 'var(--rojo)', color: '#fff',
+                borderRadius: '99px', fontSize: '0.65rem', fontWeight: 700,
+                padding: '1px 5px', lineHeight: 1.4,
+              }}>
+                {pendientes}
+              </span>
+            )}
           </a>
         ))}
       </div>
 
-      {/* ── TAB: USUARIOS ──────────────────────────────────────────────── */}
+      {/* ── TAB: USUARIOS ─────────────────────────────────────────────────── */}
       {tab === 'usuarios' && (
         <div>
-          {/* Formulario crear usuario */}
           <div className="bloque-card" style={{ marginBottom: '1.4rem' }}>
             <h2 style={{ fontSize: '1.05rem', marginBottom: '0.8rem' }}>Crear nuevo usuario</h2>
             <form action={crearUsuario}>
@@ -235,23 +336,26 @@ export default async function UsuariosAdminPage({
                   </select>
                 </div>
               </div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--tinta-suave)', margin: '0.4rem 0' }}>
-                El usuario recibirá el correo con sus credenciales. La contraseña puede cambiarse desde recuperar contraseña.
+              <p style={{ fontSize: '0.78rem', color: 'var(--tinta-suave)', margin: '0.5rem 0' }}>
+                Se enviará un correo de bienvenida con las credenciales al usuario. Puede sugerirle que cambie su contraseña al primer ingreso.
               </p>
               <button type="submit" className="btn">Crear usuario</button>
             </form>
           </div>
 
-          {/* Lista de usuarios por grupo */}
           {[
             { label: 'Administradores', lista: admins },
-            { label: 'Docentes', lista: docentes },
+            { label: 'Docentes',        lista: docentes },
             { label: 'Padres de familia', lista: padres },
           ].map(({ label, lista }) => (
             <div key={label} style={{ marginBottom: '1.6rem' }}>
-              <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--verde-900)' }}>{label} ({lista.length})</h2>
+              <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--verde-900)' }}>
+                {label} ({lista.length})
+              </h2>
               {lista.length === 0 ? (
-                <div className="mensaje-vacio" style={{ fontSize: '0.85rem' }}>No hay {label.toLowerCase()} registrados.</div>
+                <div className="mensaje-vacio" style={{ fontSize: '0.85rem' }}>
+                  No hay {label.toLowerCase()} registrados.
+                </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table className="tabla-base">
@@ -270,10 +374,8 @@ export default async function UsuariosAdminPage({
                           <td style={{ fontSize: '0.82rem' }}>{LABEL_ROL[p.rol]}</td>
                           <td>
                             <span style={{
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              borderRadius: '99px',
-                              padding: '0.15rem 0.6rem',
+                              fontSize: '0.75rem', fontWeight: 700,
+                              borderRadius: '99px', padding: '0.15rem 0.6rem',
                               background: p.activo ? 'var(--verde-100)' : '#F3E8E8',
                               color: p.activo ? 'var(--verde-700)' : 'var(--rojo)',
                             }}>
@@ -281,7 +383,6 @@ export default async function UsuariosAdminPage({
                             </span>
                           </td>
                           <td>
-                            {/* No permitir desactivar al propio admin */}
                             {p.id !== user.id && (
                               <form action={toggleActivoUsuario}>
                                 <input type="hidden" name="id" value={p.id} />
@@ -289,7 +390,11 @@ export default async function UsuariosAdminPage({
                                 <ConfirmButton
                                   className={p.activo ? 'btn btn-peligro' : 'btn btn-secundario'}
                                   style={{ fontSize: '0.73rem', padding: '0.25rem 0.6rem' }}
-                                  mensaje={p.activo ? '¿Desactivar esta cuenta? El usuario no podrá ingresar.' : '¿Reactivar esta cuenta?'}
+                                  peligro={p.activo}
+                                  confirmLabel={p.activo ? 'Desactivar' : 'Reactivar'}
+                                  mensaje={p.activo
+                                    ? `¿Desactivar la cuenta de ${p.nombre_completo}? No podrá ingresar a la plataforma.`
+                                    : `¿Reactivar la cuenta de ${p.nombre_completo}?`}
                                 >
                                   {p.activo ? 'Desactivar' : 'Reactivar'}
                                 </ConfirmButton>
@@ -307,7 +412,99 @@ export default async function UsuariosAdminPage({
         </div>
       )}
 
-      {/* ── TAB: ESTUDIANTES ────────────────────────────────────────────── */}
+      {/* ── TAB: SOLICITUDES ──────────────────────────────────────────────── */}
+      {tab === 'solicitudes' && (
+        <div>
+          <p style={{ fontSize: '0.88rem', color: 'var(--tinta-suave)', marginBottom: '1.2rem' }}>
+            Solicitudes enviadas desde{' '}
+            <a href="/solicitar-acceso" target="_blank" style={{ color: 'var(--verde-700)' }}>
+              /solicitar-acceso
+            </a>.
+            Al aprobar, se crea la cuenta y se envía la contraseña provisional por correo.
+          </p>
+
+          {solicitudes.length === 0 ? (
+            <div className="mensaje-vacio">No hay solicitudes de acceso todavía.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              {solicitudes.map(s => (
+                <div
+                  key={s.id}
+                  className="bloque-card"
+                  style={{
+                    marginBottom: 0,
+                    borderLeft: `4px solid ${s.estado === 'pendiente' ? 'var(--amarillo)' : s.estado === 'aprobada' ? 'var(--verde-700)' : 'var(--rojo)'}`,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{s.nombre_completo}</div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--tinta-suave)' }}>{s.correo}</div>
+                      {s.telefono && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--tinta-suave)' }}>Tel: {s.telefono}</div>
+                      )}
+                      {s.info_adicional && (
+                        <div style={{ fontSize: '0.8rem', marginTop: '0.3rem', color: 'var(--tinta)' }}>
+                          {s.info_adicional}
+                        </div>
+                      )}
+                      {s.notas_admin && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--rojo)', marginTop: '0.2rem' }}>
+                          Nota: {s.notas_admin}
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.73rem', color: 'var(--tinta-suave)', marginTop: '0.3rem' }}>
+                        {new Date(s.created_at).toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+                      <span style={{
+                        fontSize: '0.73rem', fontWeight: 700,
+                        borderRadius: '99px', padding: '0.15rem 0.7rem',
+                        background: s.estado === 'pendiente' ? '#FEF9C3' : s.estado === 'aprobada' ? 'var(--verde-100)' : '#FEE2E2',
+                        color: s.estado === 'pendiente' ? '#854D0E' : s.estado === 'aprobada' ? 'var(--verde-700)' : 'var(--rojo)',
+                      }}>
+                        {s.estado.charAt(0).toUpperCase() + s.estado.slice(1)}
+                      </span>
+                      {s.estado === 'pendiente' && (
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <form action={aprobarSolicitud}>
+                            <input type="hidden" name="id"     value={s.id} />
+                            <input type="hidden" name="nombre" value={s.nombre_completo} />
+                            <input type="hidden" name="correo" value={s.correo} />
+                            <ConfirmButton
+                              className="btn"
+                              style={{ fontSize: '0.73rem', padding: '0.25rem 0.6rem' }}
+                              peligro={false}
+                              confirmLabel="Aprobar y crear cuenta"
+                              mensaje={`¿Aprobar la solicitud de ${s.nombre_completo}?\n\nSe creará la cuenta con rol de Padre/Madre y se enviará la contraseña provisional al correo ${s.correo}.`}
+                            >
+                              Aprobar
+                            </ConfirmButton>
+                          </form>
+                          <form action={rechazarSolicitud}>
+                            <input type="hidden" name="id" value={s.id} />
+                            <ConfirmButton
+                              className="btn btn-peligro"
+                              style={{ fontSize: '0.73rem', padding: '0.25rem 0.6rem' }}
+                              confirmLabel="Rechazar"
+                              mensaje={`¿Rechazar la solicitud de ${s.nombre_completo}?`}
+                            >
+                              Rechazar
+                            </ConfirmButton>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: ESTUDIANTES ──────────────────────────────────────────────── */}
       {tab === 'estudiantes' && (
         <div>
           <div className="bloque-card" style={{ marginBottom: '1.4rem' }}>
@@ -364,7 +561,7 @@ export default async function UsuariosAdminPage({
         </div>
       )}
 
-      {/* ── TAB: VÍNCULOS ───────────────────────────────────────────────── */}
+      {/* ── TAB: VÍNCULOS ─────────────────────────────────────────────────── */}
       {tab === 'vinculos' && (
         <div>
           <div className="bloque-card" style={{ marginBottom: '1.4rem' }}>
@@ -415,7 +612,7 @@ export default async function UsuariosAdminPage({
                       <td style={{ fontSize: '0.82rem' }}>{v.estudiante?.grupo}</td>
                       <td>
                         <form action={eliminarVinculo}>
-                          <input type="hidden" name="padre_id" value={v.padre_id} />
+                          <input type="hidden" name="padre_id"      value={v.padre_id} />
                           <input type="hidden" name="estudiante_id" value={v.estudiante_id} />
                           <ConfirmButton
                             className="btn btn-peligro"

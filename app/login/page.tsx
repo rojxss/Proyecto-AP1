@@ -69,8 +69,11 @@ export default async function LoginPage({ searchParams }: Props) {
           <LoginForm />
 
           <div className="nota-acceso">
-            Las cuentas de padres de familia las crea la escuela. Si aún no tiene
-            acceso, comuníquese con la secretaría al {get('telefono') || '2272-4746'}.
+            ¿No tiene cuenta?{' '}
+            <a href="/solicitar-acceso" style={{ color: 'var(--verde-700)', fontWeight: 600 }}>
+              Solicite acceso aquí
+            </a>
+            {' '}o comuníquese con la secretaría al {get('telefono') || '2272-4746'}.
           </div>
         </div>
       </div>

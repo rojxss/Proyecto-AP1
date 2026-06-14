@@ -27,7 +27,7 @@ export default async function PaginaPublica() {
   const datos = (infos ?? []) as InstitutionInfo[]
   const avisos = lista(datos, 'aviso')
   const servicios = lista(datos, 'servicio')
-  const faqs = lista(datos, 'faq').slice(0, 4)
+  const faqs = lista(datos, 'faq')
 
   const nombre = val(datos, 'nombre') || 'Escuela Villas de Ayarco'
   const lugar = val(datos, 'lugar') || 'La Unión de Cartago'

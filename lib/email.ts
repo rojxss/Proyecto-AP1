@@ -103,6 +103,42 @@ export async function notificarNuevaCita(params: {
 }
 
 /**
+ * Notifica al nuevo usuario sus credenciales de acceso provisionales.
+ */
+export async function notificarBienvenida(params: {
+  email: string
+  nombre: string
+  passwordProvisional: string
+}) {
+  const url = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://escuela-villas-de-ayarco.vercel.app'
+  const cuerpo = `Su cuenta en la Plataforma Escolar de la ${NOMBRE_ESCUELA} ha sido creada.
+
+Sus datos de acceso son:
+
+  Correo     : ${params.email}
+  Contraseña : ${params.passwordProvisional}
+
+Ingrese en: ${url}
+
+Por seguridad, cambie su contraseña al iniciar sesión por primera vez.
+Use la opción «¿Olvidó su contraseña?» para establecer una nueva clave.
+
+— ${NOMBRE_ESCUELA}`
+
+  if (!resend) {
+    console.log('[Email] Bienvenida →', params.email)
+    return
+  }
+
+  await resend.emails.send({
+    from: FROM,
+    to: params.email,
+    subject: `Bienvenido/a a la Plataforma Escolar — ${NOMBRE_ESCUELA}`,
+    text: `Estimado/a ${params.nombre},\n\n${cuerpo}`,
+  })
+}
+
+/**
  * Notifica el cambio de estado de una cita. Siempre notifica al padre.
  * Si el estado es Cancelada (por el padre), también notifica al funcionario.
  */
