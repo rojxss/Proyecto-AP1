@@ -1,8 +1,272 @@
-export default function ChatbotPadrePage() {
+/**
+ * ChatbotPadrePage — /padre/chatbot
+ * Asistente virtual que responde consultas usando información de la plataforma.
+ * RF-16: chatbot con IA usando ÚNICAMENTE datos institucionales (sin PII al LLM).
+ */
+'use server'
+
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+import { consultarLLM, type ContextoInstitucional } from '@/lib/llm/adapter'
+
+// ── Server Action ─────────────────────────────────────────────────────────────
+
+async function enviarMensaje(formData: FormData) {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const consulta = (formData.get('consulta') as string)?.trim()
+  if (!consulta || consulta.length > 500) return
+
+  // ── 1. Construir contexto institucional (sin PII) ──────────────────────────
+
+  // Info institucional general
+  const { data: infosRaw } = await supabase
+    .from('institution_info')
+    .select('clave, valor, tipo')
+    .order('orden')
+
+  const infos = infosRaw ?? []
+  const textos = infos.filter(i => i.tipo === 'texto')
+  const faqs   = infos.filter(i => i.tipo === 'faq')
+
+  const getInfo = (clave: string) => textos.find(t => t.clave === clave)?.valor ?? ''
+
+  const infoInstitucional = [
+    `Escuela: ${getInfo('nombre')}`,
+    `Ubicación: ${getInfo('direccion')}`,
+    `Teléfono: ${getInfo('telefono')}`,
+    `Correo: ${getInfo('correo')}`,
+    `Horario de atención: ${getInfo('horario_atencion')}`,
+    `Directora: ${getInfo('directora')}`,
+    `Secretaria: ${getInfo('secretaria')}`,
+  ].filter(l => !l.endsWith(': ')).join('\n')
+
+  const faqFormateadas = faqs.map(f => {
+    const [pregunta, respuesta] = f.valor.split('|||')
+    return { pregunta: pregunta ?? '', respuesta: respuesta ?? '' }
+  }).filter(f => f.pregunta && f.respuesta)
+
+  // Grupos de los hijos del padre (solo grupos, sin nombres de estudiantes)
+  const { data: vinculosRaw } = await supabase
+    .from('parent_student')
+    .select('estudiante_id')
+    .eq('padre_id', user.id)
+
+  const estudianteIds = (vinculosRaw ?? []).map(v => v.estudiante_id as string)
+  let grupos: string[] = []
+
+  if (estudianteIds.length > 0) {
+    const { data: estudiantesRaw } = await supabase
+      .from('students')
+      .select('grupo')
+      .in('id', estudianteIds)
+      .eq('activo', true)
+    grupos = [...new Set((estudiantesRaw ?? []).map(e => e.grupo as string))]
+  }
+
+  // Publicaciones recientes de esos grupos (sin datos personales)
+  let publicacionesCtx: ContextoInstitucional['publicaciones'] = []
+  if (grupos.length > 0) {
+    const { data: postsRaw } = await supabase
+      .from('posts')
+      .select('tipo, titulo, contenido, created_at, segmento, segmento_valor')
+      .or(`segmento.eq.todos,segmento_valor.in.(${grupos.map(g => `"${g}"`).join(',')})`)
+      .order('created_at', { ascending: false })
+      .limit(8)
+
+    publicacionesCtx = (postsRaw ?? []).map(p => ({
+      tipo: p.tipo as string,
+      titulo: p.titulo as string,
+      contenido: (p.contenido as string) ?? '',
+      fecha: new Date(p.created_at as string).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' }),
+    }))
+  }
+
+  // Horario de los grupos (sin nombres de estudiantes)
+  let horarioGrupo = ''
+  if (grupos.length > 0) {
+    const { data: entradasRaw } = await supabase
+      .from('schedule_entries')
+      .select(`dia, materia, aula, bloque:time_blocks(etiqueta), grupo`)
+      .in('grupo', grupos)
+      .order('grupo')
+
+    if (entradasRaw && entradasRaw.length > 0) {
+      const porGrupo: Record<string, string[]> = {}
+      for (const e of entradasRaw) {
+        const etiqueta = (e.bloque as { etiqueta?: string } | null)?.etiqueta ?? ''
+        if (!porGrupo[e.grupo as string]) porGrupo[e.grupo as string] = []
+        porGrupo[e.grupo as string].push(`${e.dia} ${etiqueta}: ${e.materia}${e.aula ? ` (Aula ${e.aula})` : ''}`)
+      }
+      horarioGrupo = Object.entries(porGrupo)
+        .map(([g, entries]) => `Grupo ${g}:\n${entries.join('\n')}`)
+        .join('\n\n')
+    }
+  }
+
+  const contexto: ContextoInstitucional = {
+    infoInstitucional,
+    faq: faqFormateadas,
+    publicaciones: publicacionesCtx,
+    horarioGrupo: horarioGrupo || undefined,
+  }
+
+  // ── 2. Llamar al LLM ──────────────────────────────────────────────────────
+
+  let respuestaTexto = ''
+  let proveedor = 'mock'
+
+  try {
+    const resultado = await consultarLLM(consulta, contexto)
+    respuestaTexto = resultado.texto
+    proveedor = resultado.proveedor
+  } catch {
+    respuestaTexto = 'No pude procesar su consulta en este momento. Por favor comuníquese con la secretaría al 2272-4746.'
+    proveedor = 'error'
+  }
+
+  // ── 3. Guardar en chatbot_logs ────────────────────────────────────────────
+
+  await supabase.from('chatbot_logs').insert({
+    padre_id: user.id,
+    consulta,
+    respuesta: respuestaTexto,
+    proveedor,
+  })
+
+  revalidatePath('/padre/chatbot')
+}
+
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+
+interface LogRow {
+  id: string
+  consulta: string
+  respuesta: string
+  created_at: string
+}
+
+// ── Página ────────────────────────────────────────────────────────────────────
+
+export default async function ChatbotPadrePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  // Historial de conversaciones del padre (últimas 20)
+  const { data: logsRaw } = await supabase
+    .from('chatbot_logs')
+    .select('id, consulta, respuesta, created_at')
+    .eq('padre_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  const logs = ((logsRaw ?? []) as LogRow[]).reverse()
+
   return (
-    <div>
-      <h1 style={{ fontSize: '1.6rem', marginBottom: '0.5rem' }}>Asistente virtual</h1>
-      <div className="mensaje-vacio">Esta sección estará disponible próximamente.</div>
+    <div style={{ maxWidth: '720px' }}>
+      <h1 style={{ fontSize: '1.6rem', marginBottom: '0.3rem' }}>Asistente virtual</h1>
+      <p style={{ color: 'var(--tinta-suave)', fontSize: '0.9rem', marginBottom: '1.4rem' }}>
+        Consulte horarios, publicaciones, citas y cualquier duda sobre la plataforma.
+        El asistente responde únicamente con información de la escuela.
+      </p>
+
+      {/* Historial de conversación */}
+      <div style={{
+        background: 'var(--crema)',
+        border: '1px solid var(--linea)',
+        borderRadius: 'var(--radio)',
+        padding: '1rem',
+        marginBottom: '1rem',
+        minHeight: '200px',
+        maxHeight: '480px',
+        overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+      }}>
+        {logs.length === 0 ? (
+          <div style={{ color: 'var(--tinta-suave)', textAlign: 'center', paddingTop: '2rem', fontSize: '0.9rem' }}>
+            ¡Hola! Soy el asistente virtual de la Escuela Villas de Ayarco.<br />
+            Puede preguntarme sobre horarios, citas, publicaciones y más.
+          </div>
+        ) : (
+          logs.map(log => (
+            <div key={log.id}>
+              {/* Mensaje del padre */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.4rem' }}>
+                <div style={{
+                  background: 'var(--verde-700)',
+                  color: '#fff',
+                  borderRadius: '16px 16px 4px 16px',
+                  padding: '0.6rem 1rem',
+                  maxWidth: '78%',
+                  fontSize: '0.9rem',
+                }}>
+                  {log.consulta}
+                </div>
+              </div>
+              {/* Respuesta del asistente */}
+              <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '0.5rem' }}>
+                <div style={{
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: 'var(--verde-100)', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '1rem',
+                }}>
+                  🏫
+                </div>
+                <div style={{
+                  background: '#fff',
+                  border: '1px solid var(--linea)',
+                  borderRadius: '4px 16px 16px 16px',
+                  padding: '0.6rem 1rem',
+                  maxWidth: '78%',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.5,
+                }}>
+                  {log.respuesta}
+                  <div style={{ fontSize: '0.68rem', color: 'var(--tinta-suave)', marginTop: '0.3rem' }}>
+                    {new Date(log.created_at).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Formulario de envío */}
+      <form action={enviarMensaje} style={{ display: 'flex', gap: '0.6rem' }}>
+        <input
+          name="consulta"
+          type="text"
+          maxLength={500}
+          required
+          placeholder="Escriba su consulta aquí…"
+          style={{
+            flex: 1,
+            padding: '0.7rem 1rem',
+            borderRadius: '10px',
+            border: '1.5px solid var(--linea)',
+            fontSize: '0.9rem',
+            outline: 'none',
+          }}
+          autoComplete="off"
+        />
+        <button type="submit" className="btn" style={{ whiteSpace: 'nowrap' }}>
+          Enviar
+        </button>
+      </form>
+
+      <p style={{ fontSize: '0.75rem', color: 'var(--tinta-suave)', marginTop: '0.6rem' }}>
+        El asistente responde solo con información de la plataforma. Para consultas complejas,
+        contacte a la secretaría al <strong>2272-4746</strong>.
+      </p>
     </div>
   )
 }

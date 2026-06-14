@@ -4,8 +4,10 @@
  * RF-08, RF-16
  */
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { notificarCambioCita } from '@/lib/email'
+import { formatearFecha } from '@/lib/utils'
 import type { EstadoCita } from '@/types/database'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
@@ -34,6 +36,41 @@ async function cambiarEstado(formData: FormData) {
     .from('appointments')
     .update({ estado: nuevoEstado, ...(motivo_rechazo ? { motivo_rechazo } : {}) })
     .eq('id', id)
+
+  // Notificar a ambas partes del cambio de estado
+  try {
+    const adminClient = await createAdminClient()
+    const { data: citaCompleta } = await supabase
+      .from('appointments')
+      .select(`
+        padre_id, funcionario_id, fecha,
+        bloque:time_blocks(etiqueta),
+        padre:profiles!padre_id(nombre_completo),
+        funcionario:profiles!funcionario_id(nombre_completo)
+      `)
+      .eq('id', id).single()
+
+    if (citaCompleta) {
+      const [{ data: datosPadre }, { data: datosFuncionario }] = await Promise.all([
+        adminClient.auth.admin.getUserById(citaCompleta.padre_id as string),
+        adminClient.auth.admin.getUserById(citaCompleta.funcionario_id as string),
+      ])
+      if (datosPadre?.user?.email) {
+        await notificarCambioCita({
+          emailPadre: datosPadre.user.email,
+          emailFuncionario: datosFuncionario?.user?.email,
+          nombrePadre: (citaCompleta.padre as { nombre_completo?: string } | null)?.nombre_completo ?? '',
+          nombreFuncionario: (citaCompleta.funcionario as { nombre_completo?: string } | null)?.nombre_completo ?? '',
+          fecha: formatearFecha(citaCompleta.fecha as string),
+          bloque: (citaCompleta.bloque as { etiqueta?: string } | null)?.etiqueta ?? '',
+          nuevoEstado,
+          motivoRechazo: motivo_rechazo,
+        })
+      }
+    }
+  } catch {
+    // No interrumpir el flujo si el correo falla
+  }
 
   revalidatePath('/admin/citas')
   revalidatePath('/padre/citas')

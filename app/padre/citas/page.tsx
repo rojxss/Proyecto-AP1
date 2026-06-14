@@ -4,9 +4,10 @@
  * RF-06, RF-07, RF-08, RF-15, RF-20
  */
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { formatearFecha } from '@/lib/utils'
+import { notificarNuevaCita, notificarCambioCita } from '@/lib/email'
 import type { EstadoCita, DiaSemana } from '@/types/database'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
@@ -58,6 +59,34 @@ async function agendarCita(formData: FormData) {
     estado: 'Pendiente',
   })
 
+  // Notificación por correo a ambas partes
+  try {
+    const adminClient = await createAdminClient()
+    const [{ data: datosPadre }, { data: datosFuncionario }, { data: bloqueDatos }] = await Promise.all([
+      adminClient.auth.admin.getUserById(user.id),
+      adminClient.auth.admin.getUserById(funcionario_id),
+      supabase.from('time_blocks').select('etiqueta').eq('id', bloque_id).single(),
+    ])
+    const { data: perfilFuncionario } = await supabase
+      .from('profiles').select('nombre_completo').eq('id', funcionario_id).single()
+    const { data: perfilPadre } = await supabase
+      .from('profiles').select('nombre_completo').eq('id', user.id).single()
+
+    if (datosPadre?.user?.email && datosFuncionario?.user?.email) {
+      await notificarNuevaCita({
+        emailPadre: datosPadre.user.email,
+        emailFuncionario: datosFuncionario.user.email,
+        nombrePadre: perfilPadre?.nombre_completo ?? 'Padre/Madre',
+        nombreFuncionario: perfilFuncionario?.nombre_completo ?? 'Funcionario/a',
+        fecha: formatearFecha(fecha),
+        bloque: bloqueDatos?.etiqueta ?? bloque_id,
+        motivo,
+      })
+    }
+  } catch {
+    // No interrumpir el flujo si el correo falla
+  }
+
   revalidatePath('/padre/citas')
   revalidatePath('/docente/citas')
 }
@@ -85,6 +114,39 @@ async function cancelarCita(formData: FormData) {
     .from('appointments')
     .update({ estado: 'Cancelada' })
     .eq('id', id)
+
+  // Notificar al funcionario que la cita fue cancelada
+  try {
+    const adminClient = await createAdminClient()
+    const { data: citaCompleta } = await supabase
+      .from('appointments')
+      .select(`funcionario_id, fecha, bloque:time_blocks(etiqueta), funcionario:profiles!funcionario_id(nombre_completo)`)
+      .eq('id', id).single()
+    const { data: perfilPadre } = await supabase
+      .from('profiles').select('nombre_completo').eq('id', user.id).single()
+
+    if (citaCompleta) {
+      const [{ data: datosPadre }, { data: datosFuncionario }] = await Promise.all([
+        adminClient.auth.admin.getUserById(user.id),
+        adminClient.auth.admin.getUserById(citaCompleta.funcionario_id as string),
+      ])
+      if (datosPadre?.user?.email && datosFuncionario?.user?.email) {
+        const bloqueEtiqueta = (citaCompleta.bloque as { etiqueta?: string } | null)?.etiqueta ?? ''
+        const nombreFuncionario = (citaCompleta.funcionario as { nombre_completo?: string } | null)?.nombre_completo ?? ''
+        await notificarCambioCita({
+          emailPadre: datosPadre.user.email,
+          emailFuncionario: datosFuncionario.user.email,
+          nombrePadre: perfilPadre?.nombre_completo ?? 'Padre/Madre',
+          nombreFuncionario,
+          fecha: formatearFecha(citaCompleta.fecha as string),
+          bloque: bloqueEtiqueta,
+          nuevoEstado: 'Cancelada',
+        })
+      }
+    }
+  } catch {
+    // No interrumpir el flujo si el correo falla
+  }
 
   revalidatePath('/padre/citas')
   revalidatePath('/docente/citas')
