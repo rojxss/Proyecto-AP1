@@ -123,6 +123,34 @@ export async function notificarCambioCita(p: {
 }
 
 /**
+ * Envía el enlace de recuperación de contraseña generado por Supabase.
+ * Así el correo llega desde Gmail (escuela) en vez del servicio de Supabase.
+ */
+export async function notificarRecuperacionContrasena(p: {
+  email: string
+  nombre: string
+  enlace: string
+}) {
+  const url    = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://escuela-villas-de-ayarco.vercel.app'
+  const asunto = `Recuperación de contraseña — ${NOMBRE_ESCUELA}`
+  const texto  = `Hemos recibido una solicitud para restablecer la contraseña de su cuenta en la Plataforma Escolar.
+
+Para crear una nueva contraseña haga clic en el siguiente enlace:
+
+${p.enlace}
+
+El enlace es válido por 30 minutos. Si usted no realizó esta solicitud, puede ignorar este mensaje; su contraseña actual no cambiará.
+
+Si el enlace no abre, cópielo y péguelo en su navegador.
+
+Acceso a la plataforma: ${url}
+
+— ${NOMBRE_ESCUELA}`
+
+  await enviar(p.email, asunto, `Estimado/a ${p.nombre},\n\n${texto}`)
+}
+
+/**
  * Notifica al nuevo usuario sus credenciales de acceso provisionales.
  */
 export async function notificarBienvenida(p: {
