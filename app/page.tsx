@@ -83,27 +83,28 @@ export default async function PaginaPublica() {
 
         <div style={{ height: '1.6rem' }} />
 
-        {/* Carrusel de imágenes */}
-        <CarruselEscuela />
-
-        <div style={{ height: '1.6rem' }} />
-
-        {/* Historia y servicios */}
-        <div id="escuela" className="dos-col">
-          <div className="bloque-card">
-            <div className="eyebrow">Nuestra historia</div>
-            <h2>Una escuela nacida de su comunidad</h2>
-            <p>{resena}</p>
-          </div>
-          <div className="bloque-card">
-            <div className="eyebrow">Servicios de apoyo</div>
-            <h2>Acompañamos a cada estudiante</h2>
-            <p>La institución cuenta con servicios profesionales de apoyo para el desarrollo integral de la niñez:</p>
-            <div className="servicios-chips">
-              {servicios.map(s => (
-                <span key={s.id}>{s.valor}</span>
-              ))}
+        {/* Historia + Servicios (izquierda) | Galería fotográfica (derecha sticky) */}
+        <div id="escuela" className="seccion-galeria">
+          <div className="galeria-columna-texto">
+            <div className="bloque-card">
+              <div className="eyebrow">Nuestra historia</div>
+              <h2>Una escuela nacida de su comunidad</h2>
+              <p>{resena}</p>
             </div>
+            <div className="bloque-card">
+              <div className="eyebrow">Servicios de apoyo</div>
+              <h2>Acompañamos a cada estudiante</h2>
+              <p>La institución cuenta con servicios profesionales de apoyo para el desarrollo integral de la niñez:</p>
+              <div className="servicios-chips">
+                {servicios.map(s => (
+                  <span key={s.id}>{s.valor}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="galeria-columna-carrusel">
+            <p className="galeria-eyebrow">Galería fotográfica</p>
+            <CarruselEscuela />
           </div>
         </div>
 
