@@ -7,32 +7,52 @@ import type { ContextoInstitucional, RespuestaLLM } from './adapter'
 
 const MODELO = process.env.LLM_GROQ_MODEL ?? 'llama-3.1-8b-instant'
 
-function construirMensajes(consulta: string, contexto: ContextoInstitucional) {
-  const partesSistema: string[] = [
-    'Eres el asistente virtual de la Escuela Villas de Ayarco (Costa Rica). Responde consultas de padres de familia usando únicamente la información proporcionada.',
-    'Responde siempre en español de Costa Rica. Sé breve (máx. 3 oraciones). Si la consulta está fuera de tu alcance, indica cómo contactar a la secretaría.',
-    'NUNCA menciones nombres de estudiantes específicos, correos ni datos personales.',
+function construirPromptSistema(contexto: ContextoInstitucional): string {
+  const partes: string[] = [
+    'Sos el asistente virtual de la Escuela Villas de Ayarco, ubicada en La Unión de Cartago, Costa Rica. Ayudás a padres de familia con consultas sobre la escuela y la plataforma.',
     '',
-    'CONTEXTO DISPONIBLE:',
+    'FUENTES DE CONOCIMIENTO (en orden de prioridad):',
+    '1. Información del contexto proporcionado: horarios, publicaciones, FAQ, datos institucionales y citas.',
+    '2. Conocimiento general sobre escuelas públicas del MEP de Costa Rica: uniforme, procedimientos comunes, justificación de ausencias, matrícula, calendario escolar.',
+    '3. Cómo usar las funciones de esta plataforma: agendar citas, ver horarios, revisar publicaciones.',
+    '',
+    'REGLAS:',
+    '- Respondé siempre en español de Costa Rica, con tono cordial, claro y directo.',
+    '- Si la respuesta está en el contexto, usala con precisión.',
+    '- Para preguntas sobre procedimientos generales del MEP, podés responder con tu conocimiento y aclarar que lo confirmen con la secretaría si necesitan el dato exacto de esta escuela.',
+    '- Nunca inventés datos específicos como fechas exactas, calificaciones, asistencia ni información personal.',
+    '- Nunca mencionés nombres de estudiantes ni datos personales de las familias.',
+    '- Si algo está completamente fuera de tu alcance, decilo brevemente y dá el teléfono 2272-4746.',
+    '- Máximo 4 oraciones por respuesta. Sé concreto y útil, no repetitivo.',
+    '- Si el padre hace una pregunta de seguimiento, usá el historial de conversación para responder con coherencia.',
+    '',
+    'INFORMACIÓN INSTITUCIONAL:',
   ]
 
-  if (contexto.infoInstitucional) partesSistema.push(contexto.infoInstitucional)
-  if (contexto.horarioGrupo) partesSistema.push(`\nHORARIO:\n${contexto.horarioGrupo}`)
-  if (contexto.faq?.length) {
-    partesSistema.push('\nFAQ:')
-    contexto.faq.forEach(f => partesSistema.push(`P: ${f.pregunta}\nR: ${f.respuesta}`))
-  }
-  if (contexto.publicaciones?.length) {
-    partesSistema.push('\nPUBLICACIONES:')
-    contexto.publicaciones.forEach(p =>
-      partesSistema.push(`[${p.tipo}] ${p.titulo} (${p.fecha}): ${p.contenido}`)
-    )
+  if (contexto.infoInstitucional) {
+    partes.push(contexto.infoInstitucional)
   }
 
-  return [
-    { role: 'system', content: partesSistema.join('\n') },
-    { role: 'user', content: consulta },
-  ]
+  if (contexto.horarioGrupo) {
+    partes.push('\nHORARIO DEL GRUPO:')
+    partes.push(contexto.horarioGrupo)
+  }
+
+  if (contexto.faq && contexto.faq.length > 0) {
+    partes.push('\nPREGUNTAS FRECUENTES:')
+    contexto.faq.forEach(({ pregunta, respuesta }) => {
+      partes.push(`P: ${pregunta}\nR: ${respuesta}`)
+    })
+  }
+
+  if (contexto.publicaciones && contexto.publicaciones.length > 0) {
+    partes.push('\nPUBLICACIONES RECIENTES:')
+    contexto.publicaciones.forEach(({ tipo, titulo, contenido, fecha }) => {
+      partes.push(`[${tipo.toUpperCase()}] ${titulo} (${fecha}): ${contenido}`)
+    })
+  }
+
+  return partes.join('\n')
 }
 
 export async function consultarGroq(
@@ -44,6 +64,20 @@ export async function consultarGroq(
     throw new Error('LLM_API_KEY no configurada para el proveedor Groq')
   }
 
+  const sistemaMensaje = { role: 'system', content: construirPromptSistema(contexto) }
+
+  // Incluir historial de conversación para preguntas de seguimiento
+  const mensajesHistorial = (contexto.historial ?? []).map(h => ({
+    role: h.rol === 'padre' ? 'user' : 'assistant',
+    content: h.texto,
+  }))
+
+  const mensajes = [
+    sistemaMensaje,
+    ...mensajesHistorial,
+    { role: 'user', content: consulta },
+  ]
+
   const respuesta = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -52,9 +86,9 @@ export async function consultarGroq(
     },
     body: JSON.stringify({
       model: MODELO,
-      messages: construirMensajes(consulta, contexto),
-      max_tokens: 256,
-      temperature: 0.2,
+      messages: mensajes,
+      max_tokens: 400,
+      temperature: 0.3,
     }),
   })
 

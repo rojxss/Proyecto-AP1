@@ -6,6 +6,7 @@
  * - Horario de un grupo (sin datos de estudiante específico)
  * - FAQ institucional
  * - Comunicados y publicaciones del grupo
+ * - Historial reciente de la conversación (últimos intercambios)
  * NUNCA incluir: nombre del padre, correo, ID, datos del estudiante específico.
  */
 
@@ -18,6 +19,8 @@ export interface ContextoInstitucional {
   publicaciones?: Array<{ tipo: string; titulo: string; contenido: string; fecha: string }>
   /** Información general de la institución */
   infoInstitucional?: string
+  /** Historial reciente de la conversación para preguntas de seguimiento */
+  historial?: Array<{ rol: 'padre' | 'asistente'; texto: string }>
 }
 
 export interface RespuestaLLM {

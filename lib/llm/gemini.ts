@@ -12,16 +12,23 @@ const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL
 
 function construirPromptSistema(contexto: ContextoInstitucional): string {
   const partes: string[] = [
-    'Eres el asistente virtual de la Escuela Villas de Ayarco (Costa Rica). Tu única función es responder consultas de padres de familia sobre información escolar usando los datos que se te proporcionan.',
-    'REGLAS ESTRICTAS:',
-    '- Responde ÚNICAMENTE con información contenida en el contexto proporcionado.',
-    '- Si la consulta excede tu alcance, indícalo claramente y sugiere contactar a la secretaría.',
-    '- No inventes datos, horarios ni información que no esté en el contexto.',
-    '- Responde siempre en español de Costa Rica, con tono cordial y claro.',
-    '- Sé breve: máximo 3 oraciones por respuesta.',
-    '- NUNCA menciones nombres de estudiantes específicos, correos ni datos personales.',
+    'Sos el asistente virtual de la Escuela Villas de Ayarco, ubicada en La Unión de Cartago, Costa Rica. Ayudás a padres de familia con consultas sobre la escuela y la plataforma.',
     '',
-    'INFORMACIÓN INSTITUCIONAL DISPONIBLE:',
+    'FUENTES DE CONOCIMIENTO (en orden de prioridad):',
+    '1. Información del contexto proporcionado: horarios, publicaciones, FAQ, datos institucionales y citas.',
+    '2. Conocimiento general sobre escuelas públicas del MEP de Costa Rica: uniforme, procedimientos comunes, justificación de ausencias, matrícula, calendario escolar.',
+    '3. Cómo usar las funciones de esta plataforma: agendar citas, ver horarios, revisar publicaciones.',
+    '',
+    'REGLAS:',
+    '- Respondé siempre en español de Costa Rica, con tono cordial, claro y directo.',
+    '- Si la respuesta está en el contexto, usala con precisión.',
+    '- Para preguntas sobre procedimientos generales del MEP, podés responder con tu conocimiento y aclarar que lo confirmen con la secretaría si necesitan el dato exacto de esta escuela.',
+    '- Nunca inventés datos específicos como fechas exactas, calificaciones, asistencia ni información personal.',
+    '- Nunca mencionés nombres de estudiantes ni datos personales de las familias.',
+    '- Si algo está completamente fuera de tu alcance, decilo brevemente y dá el teléfono 2272-4746.',
+    '- Máximo 4 oraciones por respuesta. Sé concreto y útil, no repetitivo.',
+    '',
+    'INFORMACIÓN INSTITUCIONAL:',
   ]
 
   if (contexto.infoInstitucional) {
@@ -61,15 +68,27 @@ export async function consultarGemini(
 
   const promptSistema = construirPromptSistema(contexto)
 
+  // Construir historial de conversación para Gemini (formato contents)
+  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = []
+
+  for (const h of (contexto.historial ?? [])) {
+    contents.push({
+      role: h.rol === 'padre' ? 'user' : 'model',
+      parts: [{ text: h.texto }],
+    })
+  }
+
+  contents.push({ role: 'user', parts: [{ text: consulta }] })
+
   const respuesta = await fetch(`${API_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: promptSistema }] },
-      contents: [{ role: 'user', parts: [{ text: consulta }] }],
+      contents,
       generationConfig: {
-        maxOutputTokens: 256,
-        temperature: 0.2,   // respuestas más consistentes y precisas
+        maxOutputTokens: 400,
+        temperature: 0.3,
       },
     }),
   })

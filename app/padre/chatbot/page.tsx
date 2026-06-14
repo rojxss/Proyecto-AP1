@@ -21,6 +21,19 @@ async function enviarMensaje(formData: FormData) {
   const consulta = (formData.get('consulta') as string)?.trim()
   if (!consulta || consulta.length > 500) return
 
+  // Historial reciente para dar contexto a preguntas de seguimiento (últimos 3 intercambios)
+  const { data: historialRaw } = await supabase
+    .from('chatbot_logs')
+    .select('consulta, respuesta')
+    .eq('padre_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(3)
+
+  const historial = ((historialRaw ?? []).reverse()).flatMap(h => [
+    { rol: 'padre' as const,      texto: h.consulta as string },
+    { rol: 'asistente' as const,  texto: h.respuesta as string },
+  ])
+
   // ── 1. Construir contexto institucional (sin PII) ──────────────────────────
 
   // Info institucional general
@@ -151,6 +164,7 @@ async function enviarMensaje(formData: FormData) {
     faq: faqFormateadas,
     publicaciones: publicacionesCtx,
     horarioGrupo: horarioGrupo || undefined,
+    historial: historial.length > 0 ? historial : undefined,
   }
 
   // ── 2. Llamar al LLM ──────────────────────────────────────────────────────
