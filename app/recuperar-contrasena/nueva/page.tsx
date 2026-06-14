@@ -33,7 +33,9 @@ export default async function NuevaContrasenaPage() {
       />
       <div className="login-fondo">
         <div className="login-caja">
-          <div className="escudo-logo" style={{ margin: '0 auto 1rem', width: 58, height: 66, fontSize: '1.2rem' }}>VA</div>
+          <div className="escudo-logo" style={{ margin: '0 auto 1rem', width: 58, height: 66 }}>
+            <img src="/logo.png" alt="Escudo Escuela Villas de Ayarco" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
           <h1>Nueva contraseña</h1>
           <p className="login-sub">Ingrese y confirme su nueva contraseña.</p>
           <NuevaContrasenaForm />

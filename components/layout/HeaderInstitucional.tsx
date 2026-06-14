@@ -27,11 +27,10 @@ export default function HeaderInstitucional({
         Ministerio de Educación Pública · {circuito}
       </div>
       <header className="header-inst">
-        {/* Escudo / logo */}
-        <div className="escudo-logo" aria-label={`Escudo de ${nombre}`}>
-          {/* TODO: reemplazar por <img> cuando se reciba el archivo del escudo en alta resolución */}
-          VA
-        </div>
+        {/* Escudo / logo — enlaza al inicio */}
+        <Link href="/" className="escudo-logo" aria-label={`Ir al inicio — Escudo de ${nombre}`}>
+          <img src="/logo.png" alt={`Escudo de ${nombre}`} width={52} height={52} style={{ objectFit: 'contain' }} />
+        </Link>
 
         <div className="header-nombres">
           <b>{nombre}</b>
