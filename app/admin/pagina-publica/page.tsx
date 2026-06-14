@@ -112,6 +112,28 @@ async function crearServicio(formData: FormData) {
   revalidatePath('/')
 }
 
+async function actualizarAviso(formData: FormData) {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const id     = formData.get('id') as string
+  const fecha  = (formData.get('fecha') as string)?.trim()
+  const titulo = (formData.get('titulo') as string)?.trim()
+  const texto  = (formData.get('texto') as string)?.trim()
+
+  if (!id || !fecha || !titulo || !texto) return
+
+  await supabase
+    .from('institution_info')
+    .update({ valor: `${fecha}|||${titulo}|||${texto}` })
+    .eq('id', id)
+
+  revalidatePath('/admin/pagina-publica')
+  revalidatePath('/')
+}
+
 async function actualizarFaq(formData: FormData) {
   'use server'
   const supabase = await createClient()
@@ -244,17 +266,34 @@ export default async function PaginaPublicaAdminPage() {
         {avisos.length === 0 ? (
           <div className="mensaje-vacio" style={{ fontSize: '0.85rem' }}>No hay avisos publicados.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {avisos.map(a => {
               const [fecha, titulo, texto] = a.valor.split('|||')
               return (
-                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem', background: 'var(--crema)', borderRadius: '8px', border: '1px solid var(--linea)' }}>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '0.73rem', color: 'var(--tinta-suave)' }}>{fecha}</span>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{titulo}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--tinta-suave)' }}>{texto}</div>
-                  </div>
-                  <form action={eliminarEntrada}>
+                <div key={a.id} style={{ padding: '0.75rem', background: 'var(--crema)', borderRadius: '8px', border: '1px solid var(--linea)' }}>
+                  <form action={actualizarAviso}>
+                    <input type="hidden" name="id" value={a.id} />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.5rem' }}>
+                      <div className="campo" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: '0.78rem' }}>Fecha</label>
+                        <input name="fecha" type="text" maxLength={30} defaultValue={fecha} required />
+                      </div>
+                      <div className="campo" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: '0.78rem' }}>Título</label>
+                        <input name="titulo" type="text" maxLength={100} defaultValue={titulo} required />
+                      </div>
+                      <div className="campo" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                        <label style={{ fontSize: '0.78rem' }}>Texto</label>
+                        <textarea name="texto" rows={2} defaultValue={texto} required style={{ resize: 'vertical' }} />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', marginTop: '0.4rem' }}>
+                      <button type="submit" className="btn btn-secundario" style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem' }}>
+                        Guardar cambios
+                      </button>
+                    </div>
+                  </form>
+                  <form action={eliminarEntrada} style={{ marginTop: '0.4rem', textAlign: 'right' }}>
                     <input type="hidden" name="id" value={a.id} />
                     <ConfirmButton
                       className="btn btn-peligro"
