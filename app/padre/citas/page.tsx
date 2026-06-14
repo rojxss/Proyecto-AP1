@@ -103,14 +103,6 @@ interface BloqueRow {
   orden: number
 }
 
-interface DisponibilidadRow {
-  id: string
-  funcionario_id: string
-  dia: DiaSemana
-  bloque_id: string
-  disponible: boolean
-}
-
 interface CitaRow {
   id: string
   fecha: string
