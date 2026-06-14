@@ -12,7 +12,7 @@ export default function FooterPublico({ nombre, lugar, telefono, correo }: Props
       {telefono && ` · ${telefono}`}
       {correo && ` · ${correo}`}
       <br />
-      Plataforma de gestión escolar — desarrollada sin costo para la institución
+      Plataforma de gestión escolar Escuela Villas de Ayarco
       <style>{`
         .footer-publica { background: var(--verde-900); color: #BCD8C6; text-align: center; padding: 1.6rem; font-size: .84rem; }
       `}</style>
