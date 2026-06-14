@@ -12,6 +12,7 @@ import type { Rol } from '@/types/database'
 interface Props {
   nombreUsuario: string
   rol: Rol
+  badgeUsuarios?: number
 }
 
 const ITEMS_PADRE = [
@@ -48,7 +49,7 @@ const ETIQUETA_ROL: Record<Rol, string> = {
   admin: 'Administrador/a',
 }
 
-export default function Sidebar({ nombreUsuario, rol }: Props) {
+export default function Sidebar({ nombreUsuario, rol, badgeUsuarios }: Props) {
   const pathname = usePathname()
   const items = ITEMS_ROL[rol]
 
@@ -62,15 +63,34 @@ export default function Sidebar({ nombreUsuario, rol }: Props) {
       </div>
 
       <nav>
-        {items.map(item => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`sidebar-link ${pathname.startsWith(item.href) && (item.href !== '/admin' || pathname === '/admin') ? 'activo' : ''}`}
-          >
-            {item.label}
-          </Link>
-        ))}
+        {items.map(item => {
+          const activo = pathname.startsWith(item.href) && (item.href !== '/admin' || pathname === '/admin')
+          const badge = item.href === '/admin/usuarios' && badgeUsuarios ? badgeUsuarios : 0
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`sidebar-link ${activo ? 'activo' : ''}`}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}
+            >
+              <span>{item.label}</span>
+              {badge > 0 && (
+                <span style={{
+                  background: 'var(--rojo)',
+                  color: '#fff',
+                  borderRadius: '99px',
+                  fontSize: '0.62rem',
+                  fontWeight: 700,
+                  padding: '1px 6px',
+                  lineHeight: 1.5,
+                  flexShrink: 0,
+                }}>
+                  {badge}
+                </span>
+              )}
+            </Link>
+          )
+        })}
       </nav>
 
       <form action="/api/auth/signout" method="post">

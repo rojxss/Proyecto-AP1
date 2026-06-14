@@ -24,10 +24,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   if (profile.rol !== 'admin') redirect('/login')
 
-  const { data: infos } = await supabase
-    .from('institution_info')
-    .select('clave, valor')
-    .in('clave', ['nombre', 'lugar', 'fundacion', 'circuito'])
+  const [{ data: infos }, { count: pendientesSolicitudes }] = await Promise.all([
+    supabase
+      .from('institution_info')
+      .select('clave, valor')
+      .in('clave', ['nombre', 'lugar', 'fundacion', 'circuito']),
+    supabase
+      .from('access_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('estado', 'pendiente'),
+  ])
 
   const get = (clave: string) => infos?.find(i => i.clave === clave)?.valor ?? ''
 
@@ -41,7 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         autenticado
       />
       <div className="layout-app">
-        <Sidebar nombreUsuario={profile.nombre_completo} rol="admin" />
+        <Sidebar nombreUsuario={profile.nombre_completo} rol="admin" badgeUsuarios={pendientesSolicitudes ?? 0} />
         <main className="contenido-app">{children}</main>
       </div>
     </>
