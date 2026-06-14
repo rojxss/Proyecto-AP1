@@ -26,14 +26,23 @@ async function enviarMensaje(formData: FormData) {
   // Info institucional general
   const { data: infosRaw } = await supabase
     .from('institution_info')
-    .select('clave, valor, tipo')
+    .select('clave, valor, tipo, orden')
     .order('orden')
 
   const infos = infosRaw ?? []
-  const textos = infos.filter(i => i.tipo === 'texto')
-  const faqs   = infos.filter(i => i.tipo === 'faq')
+  const textos   = infos.filter(i => i.tipo === 'texto')
+  const faqs     = infos.filter(i => i.tipo === 'faq')
+  const avisos   = infos.filter(i => i.tipo === 'aviso').sort((a, b) => b.orden - a.orden).slice(0, 5)
+  const servicios = infos.filter(i => i.tipo === 'servicio')
 
   const getInfo = (clave: string) => textos.find(t => t.clave === clave)?.valor ?? ''
+
+  const serviciosTexto = servicios.map(s => s.valor).join(', ')
+
+  const avisosTexto = avisos.map(a => {
+    const [fecha, titulo, texto] = a.valor.split('|||')
+    return `[${fecha ?? ''}] ${titulo ?? ''}: ${texto ?? ''}`
+  }).filter(a => a.length > 6).join('\n')
 
   const infoInstitucional = [
     `Escuela: ${getInfo('nombre')}`,
@@ -43,11 +52,21 @@ async function enviarMensaje(formData: FormData) {
     `Horario de atención: ${getInfo('horario_atencion')}`,
     `Directora: ${getInfo('directora')}`,
     `Secretaria: ${getInfo('secretaria')}`,
-  ].filter(l => !l.endsWith(': ')).join('\n')
+    serviciosTexto ? `Servicios de apoyo disponibles: ${serviciosTexto}` : '',
+    avisosTexto ? `\nAvisos recientes en el tablón:\n${avisosTexto}` : '',
+  ].filter(Boolean).join('\n')
 
+  // Fix: las FAQs se guardan en JSON desde el CRUD; intentar parsear antes de split
   const faqFormateadas = faqs.map(f => {
-    const [pregunta, respuesta] = f.valor.split('|||')
-    return { pregunta: pregunta ?? '', respuesta: respuesta ?? '' }
+    let pregunta = '', respuesta = ''
+    try {
+      const p = JSON.parse(f.valor)
+      pregunta = p.pregunta ?? ''; respuesta = p.respuesta ?? ''
+    } catch {
+      const partes = f.valor.split('|||')
+      pregunta = partes[0] ?? ''; respuesta = partes[1] ?? ''
+    }
+    return { pregunta, respuesta }
   }).filter(f => f.pregunta && f.respuesta)
 
   // Grupos de los hijos del padre (solo grupos, sin nombres de estudiantes)
@@ -108,8 +127,27 @@ async function enviarMensaje(formData: FormData) {
     }
   }
 
+  // Citas activas del padre (para responder "¿tengo alguna cita pendiente?")
+  const { data: citasRaw } = await supabase
+    .from('appointments')
+    .select(`fecha, estado, motivo, bloque:time_blocks(etiqueta), funcionario:profiles!funcionario_id(nombre_completo)`)
+    .eq('padre_id', user.id)
+    .in('estado', ['Pendiente', 'Confirmada'])
+    .order('fecha', { ascending: true })
+    .limit(5)
+
+  const citasActivasTexto = (citasRaw ?? []).map(c => {
+    const bloque = (c.bloque as { etiqueta?: string } | null)?.etiqueta ?? ''
+    const funcionario = (c.funcionario as { nombre_completo?: string } | null)?.nombre_completo ?? 'docente'
+    return `${c.fecha} ${bloque} con ${funcionario} — ${c.estado} (motivo: ${c.motivo})`
+  }).join('\n')
+
+  const infoInstitucionalFinal = citasActivasTexto
+    ? `${infoInstitucional}\n\nCITAS ACTIVAS DEL PADRE:\n${citasActivasTexto}`
+    : infoInstitucional
+
   const contexto: ContextoInstitucional = {
-    infoInstitucional,
+    infoInstitucional: infoInstitucionalFinal,
     faq: faqFormateadas,
     publicaciones: publicacionesCtx,
     horarioGrupo: horarioGrupo || undefined,
