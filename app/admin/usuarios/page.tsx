@@ -39,14 +39,20 @@ async function crearUsuario(formData: FormData) {
   // Contraseña provisional generada automáticamente (segura, única por usuario)
   const password = generarPassword()
 
-  const { error } = await adminSupabase.auth.admin.createUser({
+  const { data: newUser, error } = await adminSupabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: { rol, nombre_completo },
   })
 
-  if (!error) {
+  if (!error && newUser?.user?.id) {
+    // Garantizar nombre y rol correctos independientemente del trigger
+    await adminSupabase
+      .from('profiles')
+      .update({ nombre_completo, rol })
+      .eq('id', newUser.user.id)
+
     try {
       await notificarBienvenida({ email, nombre: nombre_completo, passwordProvisional: password })
     } catch { /* no interrumpir si el correo falla */ }
@@ -72,7 +78,7 @@ async function aprobarSolicitud(formData: FormData) {
 
   const password = generarPassword()
 
-  const { error } = await adminSupabase.auth.admin.createUser({
+  const { data: newUser, error } = await adminSupabase.auth.admin.createUser({
     email: correo,
     password,
     email_confirm: true,
@@ -81,11 +87,17 @@ async function aprobarSolicitud(formData: FormData) {
 
   const nota = error ? 'El correo ya está registrado en el sistema.' : null
 
-  try {
-    if (!error) {
+  if (!error && newUser?.user?.id) {
+    // Garantizar nombre y rol correctos independientemente del trigger
+    await adminSupabase
+      .from('profiles')
+      .update({ nombre_completo: nombre, rol })
+      .eq('id', newUser.user.id)
+
+    try {
       await notificarBienvenida({ email: correo, nombre, passwordProvisional: password })
-    }
-  } catch { /* no interrumpir si el correo falla */ }
+    } catch { /* no interrumpir si el correo falla */ }
+  }
 
   await supabase
     .from('access_requests')
