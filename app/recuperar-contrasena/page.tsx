@@ -6,7 +6,11 @@ import HeaderInstitucional from '@/components/layout/HeaderInstitucional'
 import RecuperarForm from '@/components/auth/RecuperarForm'
 import { createClient } from '@/lib/supabase/server'
 
-export default async function RecuperarPage() {
+export default async function RecuperarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
   const supabase = await createClient()
   const { data: infos } = await supabase
     .from('institution_info')
@@ -14,6 +18,8 @@ export default async function RecuperarPage() {
     .in('clave', ['nombre', 'lugar', 'fundacion', 'circuito'])
 
   const get = (clave: string) => infos?.find(i => i.clave === clave)?.valor ?? ''
+  const { error } = await searchParams
+  const linkVencido = error === 'link_vencido'
 
   return (
     <>
@@ -29,6 +35,11 @@ export default async function RecuperarPage() {
             <img src="/logo.png" alt="Escudo Escuela Villas de Ayarco" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <h1>Recuperar contraseña</h1>
+          {linkVencido && (
+            <div style={{ background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#b91c1c', fontSize: '0.88rem', textAlign: 'center' }}>
+              El enlace ha vencido o ya fue utilizado. Solicite uno nuevo a continuación.
+            </div>
+          )}
           <p className="login-sub">
             Ingrese su correo y le enviaremos un enlace para restablecer su contraseña.
             El enlace es válido por 30 minutos.

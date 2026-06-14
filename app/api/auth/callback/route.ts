@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('next') ?? '/login'
 
   if (!code) {
-    return NextResponse.redirect(new URL('/login?error=link_invalido', origin))
+    // Supabase redirigió con error (token vencido/inválido) en vez de código PKCE
+    return NextResponse.redirect(new URL('/recuperar-contrasena?error=link_vencido', origin))
   }
 
   const cookieStore = await cookies()
