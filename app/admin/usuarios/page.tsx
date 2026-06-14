@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Rol } from '@/types/database'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -285,14 +286,13 @@ export default async function UsuariosAdminPage({
                               <form action={toggleActivoUsuario}>
                                 <input type="hidden" name="id" value={p.id} />
                                 <input type="hidden" name="activo" value={String(!p.activo)} />
-                                <button
-                                  type="submit"
+                                <ConfirmButton
                                   className={p.activo ? 'btn btn-peligro' : 'btn btn-secundario'}
                                   style={{ fontSize: '0.73rem', padding: '0.25rem 0.6rem' }}
-                                  onClick={(e) => { if (!confirm(p.activo ? '¿Desactivar esta cuenta? El usuario no podrá ingresar.' : '¿Reactivar esta cuenta?')) e.preventDefault() }}
+                                  mensaje={p.activo ? '¿Desactivar esta cuenta? El usuario no podrá ingresar.' : '¿Reactivar esta cuenta?'}
                                 >
                                   {p.activo ? 'Desactivar' : 'Reactivar'}
-                                </button>
+                                </ConfirmButton>
                               </form>
                             )}
                           </td>
@@ -417,14 +417,13 @@ export default async function UsuariosAdminPage({
                         <form action={eliminarVinculo}>
                           <input type="hidden" name="padre_id" value={v.padre_id} />
                           <input type="hidden" name="estudiante_id" value={v.estudiante_id} />
-                          <button
-                            type="submit"
+                          <ConfirmButton
                             className="btn btn-peligro"
                             style={{ fontSize: '0.73rem', padding: '0.25rem 0.6rem' }}
-                            onClick={(e) => { if (!confirm('¿Eliminar este vínculo? El padre perderá acceso a la información del estudiante.')) e.preventDefault() }}
+                            mensaje="¿Eliminar este vínculo? El padre perderá acceso a la información del estudiante."
                           >
                             Desvincular
-                          </button>
+                          </ConfirmButton>
                         </form>
                       </td>
                     </tr>

@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { TipoPost, SegmentoPost } from '@/types/database'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -314,14 +315,13 @@ export default async function PublicacionesAdminPage({
                 </a>
                 <form action={eliminarPost} style={{ display: 'inline' }}>
                   <input type="hidden" name="id" value={post.id} />
-                  <button
-                    type="submit"
+                  <ConfirmButton
                     className="btn btn-peligro"
                     style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem' }}
-                    onClick={(e) => { if (!confirm('¿Eliminar esta publicación? Esta acción no se puede deshacer.')) e.preventDefault() }}
+                    mensaje="¿Eliminar esta publicación? Esta acción no se puede deshacer."
                   >
                     Eliminar
-                  </button>
+                  </ConfirmButton>
                 </form>
               </div>
             </div>

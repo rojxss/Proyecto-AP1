@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { DiaSemana, TimeBlock, ScheduleEntry } from '@/types/database'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -415,13 +416,12 @@ export default async function HorariosAdminPage({
                                     <span style={{ color: 'var(--linea)' }}>|</span>
                                     <form action={eliminarEntrada} style={{ display: 'inline' }}>
                                       <input type="hidden" name="id" value={entrada.id} />
-                                      <button
-                                        type="submit"
+                                      <ConfirmButton
                                         style={{ background: 'none', border: 'none', fontSize: '0.72rem', color: 'var(--rojo)', cursor: 'pointer', padding: 0 }}
-                                        onClick={(e) => { if (!confirm('¿Eliminar esta entrada del horario?')) e.preventDefault() }}
+                                        mensaje="¿Eliminar esta entrada del horario?"
                                       >
                                         eliminar
-                                      </button>
+                                      </ConfirmButton>
                                     </form>
                                   </div>
                                 </td>

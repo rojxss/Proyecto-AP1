@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { notificarCambioCita } from '@/lib/email'
 import { formatearFecha } from '@/lib/utils'
 import type { EstadoCita } from '@/types/database'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -229,14 +230,13 @@ export default async function CitasAdminPage({
                           <form action={cambiarEstado}>
                             <input type="hidden" name="id" value={cita.id} />
                             <input type="hidden" name="estado" value="Completada" />
-                            <button
-                              type="submit"
+                            <ConfirmButton
                               className="btn btn-amarillo"
                               style={{ fontSize: '0.73rem', padding: '0.25rem 0.55rem' }}
-                              onClick={(e) => { if (!confirm('¿Marcar esta cita como completada?')) e.preventDefault() }}
+                              mensaje="¿Marcar esta cita como completada?"
                             >
                               Completar
-                            </button>
+                            </ConfirmButton>
                           </form>
                         )}
                         {(cita.estado === 'Pendiente' || cita.estado === 'Confirmada') && (
@@ -252,14 +252,13 @@ export default async function CitasAdminPage({
                           <form action={cambiarEstado}>
                             <input type="hidden" name="id" value={cita.id} />
                             <input type="hidden" name="estado" value="Cancelada" />
-                            <button
-                              type="submit"
+                            <ConfirmButton
                               className="btn btn-secundario"
                               style={{ fontSize: '0.73rem', padding: '0.25rem 0.55rem' }}
-                              onClick={(e) => { if (!confirm('¿Cancelar esta cita?')) e.preventDefault() }}
+                              mensaje="¿Cancelar esta cita?"
                             >
                               Cancelar
-                            </button>
+                            </ConfirmButton>
                           </form>
                         )}
                       </div>

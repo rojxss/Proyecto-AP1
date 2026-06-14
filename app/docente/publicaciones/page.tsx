@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { TipoPost, SegmentoPost } from '@/types/database'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -219,14 +220,13 @@ export default async function PublicacionesDocentePage({
               </div>
               <form action={eliminarPost} style={{ display: 'inline' }}>
                 <input type="hidden" name="id" value={post.id} />
-                <button
-                  type="submit"
+                <ConfirmButton
                   className="btn btn-peligro"
                   style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
-                  onClick={(e) => { if (!confirm('¿Eliminar esta publicación?')) e.preventDefault() }}
+                  mensaje="¿Eliminar esta publicación?"
                 >
                   Eliminar
-                </button>
+                </ConfirmButton>
               </form>
             </div>
           ))}

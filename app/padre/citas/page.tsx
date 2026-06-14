@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { formatearFecha } from '@/lib/utils'
 import { notificarNuevaCita, notificarCambioCita } from '@/lib/email'
 import type { EstadoCita, DiaSemana } from '@/types/database'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -406,14 +407,13 @@ export default async function CitasPadrePage({
                   {(cita.estado === 'Pendiente' || cita.estado === 'Confirmada') && (
                     <form action={cancelarCita}>
                       <input type="hidden" name="id" value={cita.id} />
-                      <button
-                        type="submit"
+                      <ConfirmButton
                         className="btn btn-peligro"
                         style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem' }}
-                        onClick={(e) => { if (!confirm('¿Cancelar esta cita?')) e.preventDefault() }}
+                        mensaje="¿Cancelar esta cita?"
                       >
                         Cancelar
-                      </button>
+                      </ConfirmButton>
                     </form>
                   )}
                 </td>

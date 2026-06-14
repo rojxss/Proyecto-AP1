@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { InstitutionInfo } from '@/types/database'
+import ConfirmButton from '@/components/ui/ConfirmButton'
 
 // ── Server Actions ────────────────────────────────────────────────────────────
 
@@ -234,14 +235,13 @@ export default async function PaginaPublicaAdminPage() {
                   </div>
                   <form action={eliminarEntrada}>
                     <input type="hidden" name="id" value={a.id} />
-                    <button
-                      type="submit"
+                    <ConfirmButton
                       className="btn btn-peligro"
                       style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
-                      onClick={(e) => { if (!confirm('¿Eliminar este aviso?')) e.preventDefault() }}
+                      mensaje="¿Eliminar este aviso?"
                     >
                       Eliminar
-                    </button>
+                    </ConfirmButton>
                   </form>
                 </div>
               )
@@ -265,7 +265,7 @@ export default async function PaginaPublicaAdminPage() {
               <span>{s.valor}</span>
               <form action={eliminarEntrada}>
                 <input type="hidden" name="id" value={s.id} />
-                <button type="submit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--rojo)', fontSize: '0.85rem', lineHeight: 1, padding: '0 2px' }} onClick={(e) => { if (!confirm('¿Eliminar este servicio?')) e.preventDefault() }}>×</button>
+                <ConfirmButton style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--rojo)', fontSize: '0.85rem', lineHeight: 1, padding: '0 2px' }} mensaje="¿Eliminar este servicio?">×</ConfirmButton>
               </form>
             </div>
           ))}
@@ -305,14 +305,13 @@ export default async function PaginaPublicaAdminPage() {
                     </div>
                     <form action={eliminarEntrada}>
                       <input type="hidden" name="id" value={f.id} />
-                      <button
-                        type="submit"
+                      <ConfirmButton
                         className="btn btn-peligro"
                         style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
-                        onClick={(e) => { if (!confirm('¿Eliminar esta pregunta?')) e.preventDefault() }}
+                        mensaje="¿Eliminar esta pregunta?"
                       >
                         Eliminar
-                      </button>
+                      </ConfirmButton>
                     </form>
                   </div>
                   {!f.validado && (
