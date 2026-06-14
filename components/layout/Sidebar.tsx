@@ -55,8 +55,10 @@ export default function Sidebar({ nombreUsuario, rol }: Props) {
   return (
     <aside className="sidebar" aria-label="Menú de navegación">
       <div className="sidebar-usuario">
-        <b>{nombreUsuario}</b>
-        <span>{ETIQUETA_ROL[rol]}</span>
+        <span style={{ fontSize: '0.75rem', opacity: 0.75, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+          {ETIQUETA_ROL[rol]}
+        </span>
+        <b style={{ fontSize: '0.93rem', lineHeight: 1.3 }}>{nombreUsuario}</b>
       </div>
 
       <nav>

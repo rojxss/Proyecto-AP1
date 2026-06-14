@@ -158,6 +158,7 @@ async function cancelarCita(formData: FormData) {
 interface FuncionarioRow {
   id: string
   nombre_completo: string
+  rol: string
 }
 
 interface BloqueRow {
@@ -201,7 +202,7 @@ export default async function CitasPadrePage({
   // Cargar funcionarios (docentes + admin) disponibles para citas
   const { data: funcionariosRaw } = await supabase
     .from('profiles')
-    .select('id, nombre_completo')
+    .select('id, nombre_completo, rol')
     .in('rol', ['docente', 'admin'])
     .eq('activo', true)
     .order('nombre_completo')
@@ -300,7 +301,9 @@ export default async function CitasPadrePage({
               >
                 <option value="">Seleccione un funcionario</option>
                 {funcionarios.map(f => (
-                  <option key={f.id} value={f.id}>{f.nombre_completo}</option>
+                  <option key={f.id} value={f.id}>
+                    {f.rol === 'docente' ? 'Docente' : 'Dirección'} — {f.nombre_completo}
+                  </option>
                 ))}
               </select>
             </div>

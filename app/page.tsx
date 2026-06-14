@@ -108,7 +108,14 @@ export default async function PaginaPublica() {
             <h2>Antes de llamar, consulte aquí</h2>
             <div className="faq-lista">
               {faqs.map(f => {
-                const [pregunta, respuesta] = f.valor.split('|||')
+                let pregunta = '', respuesta = ''
+                try {
+                  const p = JSON.parse(f.valor)
+                  pregunta = p.pregunta ?? ''; respuesta = p.respuesta ?? ''
+                } catch {
+                  const partes = f.valor.split('|||')
+                  pregunta = partes[0] ?? ''; respuesta = partes[1] ?? ''
+                }
                 return (
                   <details key={f.id} className="faq-item">
                     <summary>{pregunta}</summary>

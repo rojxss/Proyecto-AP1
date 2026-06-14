@@ -77,7 +77,7 @@ async function crearFaq(formData: FormData) {
 
   await supabase.from('institution_info').insert({
     clave: `faq_${Date.now()}`,
-    valor: `${pregunta}|||${respuesta}`,
+    valor: JSON.stringify({ pregunta, respuesta }),
     tipo: 'faq',
     orden: nextOrden,
     validado: false,
@@ -295,7 +295,14 @@ export default async function PaginaPublicaAdminPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {faqs.map(f => {
-              const [pregunta, respuesta] = f.valor.split('|||')
+              let pregunta = '', respuesta = ''
+              try {
+                const p = JSON.parse(f.valor)
+                pregunta = p.pregunta ?? ''; respuesta = p.respuesta ?? ''
+              } catch {
+                const partes = f.valor.split('|||')
+                pregunta = partes[0] ?? ''; respuesta = partes[1] ?? ''
+              }
               return (
                 <div key={f.id} style={{ padding: '0.6rem', background: 'var(--crema)', borderRadius: '8px', border: '1px solid var(--linea)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>

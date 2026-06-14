@@ -151,13 +151,15 @@ export default async function HorariosAdminPage({
   const { data: entradasRaw } = await query
   const entradas = (entradasRaw ?? []) as unknown as EntradaConDetalles[]
 
-  // Grupos únicos para el filtro
-  const { data: todosGrupos } = await supabase
-    .from('students')
-    .select('grupo')
-    .eq('activo', true)
-
-  const grupos = [...new Set((todosGrupos ?? []).map(s => s.grupo as string))].sort()
+  // Grupos únicos: combina estudiantes + entradas de horario existentes
+  const [{ data: gruposEst }, { data: gruposHor }] = await Promise.all([
+    supabase.from('students').select('grupo').eq('activo', true),
+    supabase.from('schedule_entries').select('grupo'),
+  ])
+  const grupos = [...new Set([
+    ...(gruposEst ?? []).map(s => s.grupo as string),
+    ...(gruposHor ?? []).map(e => e.grupo as string),
+  ])].sort()
 
   // Entrada en edición (si hay ?editar=id)
   const entradaEditar = editarId
@@ -224,7 +226,7 @@ export default async function HorariosAdminPage({
                 <select id="edit-docente" name="docente_id" defaultValue={entradaEditar.docente_id ?? ''}>
                   <option value="">Sin asignar</option>
                   {(docentes as DocenteRow[] ?? []).map(d => (
-                    <option key={d.id} value={d.id}>{d.nombre_completo}</option>
+                    <option key={d.id} value={d.id}>Docente — {d.nombre_completo}</option>
                   ))}
                 </select>
               </div>
@@ -251,12 +253,19 @@ export default async function HorariosAdminPage({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.8rem' }}>
               <div className="campo">
                 <label htmlFor="grupo">Grupo *</label>
-                <select id="grupo" name="grupo" required defaultValue={grupoFiltro}>
-                  <option value="">Seleccione</option>
-                  {grupos.map(g => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
-                </select>
+                <input
+                  id="grupo"
+                  name="grupo"
+                  type="text"
+                  list="grupos-list"
+                  required
+                  placeholder="Ej: 3-2 (seleccione o escriba)"
+                  defaultValue={grupoFiltro}
+                  maxLength={20}
+                />
+                <datalist id="grupos-list">
+                  {grupos.map(g => <option key={g} value={g} />)}
+                </datalist>
               </div>
               <div className="campo">
                 <label htmlFor="dia">Día *</label>
@@ -292,7 +301,7 @@ export default async function HorariosAdminPage({
                 <select id="docente_id" name="docente_id">
                   <option value="">Sin asignar</option>
                   {(docentes as DocenteRow[] ?? []).map(d => (
-                    <option key={d.id} value={d.id}>{d.nombre_completo}</option>
+                    <option key={d.id} value={d.id}>Docente — {d.nombre_completo}</option>
                   ))}
                 </select>
               </div>

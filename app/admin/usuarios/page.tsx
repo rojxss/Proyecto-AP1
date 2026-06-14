@@ -49,6 +49,7 @@ async function crearUsuario(formData: FormData) {
     try {
       await notificarBienvenida({ email, nombre: nombre_completo, passwordProvisional: password })
     } catch { /* no interrumpir si el correo falla */ }
+    redirect('/admin/usuarios?tab=usuarios&creado=1')
   }
 
   revalidatePath('/admin/usuarios')
@@ -230,14 +231,15 @@ const LABEL_ROL: Record<Rol, string> = {
 export default async function UsuariosAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; creado?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const params = await searchParams
-  const tab = params.tab ?? 'usuarios'
+  const tab    = params.tab ?? 'usuarios'
+  const creado = params.creado === '1'
 
   const [
     { data: perfilesRaw },
@@ -311,6 +313,14 @@ export default async function UsuariosAdminPage({
       {/* ── TAB: USUARIOS ─────────────────────────────────────────────────── */}
       {tab === 'usuarios' && (
         <div>
+          {creado && (
+            <div style={{ background: 'var(--verde-100)', border: '1.5px solid var(--verde-700)', borderRadius: 'var(--radio)', padding: '0.9rem 1.2rem', marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'var(--verde-900)', fontWeight: 600, fontSize: '0.92rem' }}>
+                ✓ Usuario creado correctamente. Se envió un correo de bienvenida con las credenciales.
+              </span>
+              <a href="/admin/usuarios?tab=usuarios" style={{ fontSize: '0.8rem', color: 'var(--verde-700)', textDecoration: 'none', marginLeft: '1rem' }}>Cerrar</a>
+            </div>
+          )}
           <div className="bloque-card" style={{ marginBottom: '1.4rem' }}>
             <h2 style={{ fontSize: '1.05rem', marginBottom: '0.8rem' }}>Crear nuevo usuario</h2>
             <form action={crearUsuario}>
@@ -573,7 +583,7 @@ export default async function UsuariosAdminPage({
                   <select id="padre_id" name="padre_id" required defaultValue="">
                     <option value="">Seleccione</option>
                     {padres.filter(p => p.activo).map(p => (
-                      <option key={p.id} value={p.id}>{p.nombre_completo}</option>
+                      <option key={p.id} value={p.id}>Padre/Madre — {p.nombre_completo}</option>
                     ))}
                   </select>
                 </div>
