@@ -154,7 +154,7 @@ export default async function PaginaPublica() {
               dentro de la plataforma para responderle al instante sobre horarios, citas,
               actividades, comunicados y cualquier duda sobre la vida escolar de sus hijos.
             </p>
-            <p style={{ fontSize: '0.92rem', color: 'var(--tinta-suave)' }}>
+            <p style={{ fontSize: '0.92rem' }}>
               Represento la sabiduría y el acompañamiento de nuestra institución. ¡Estoy aquí para ayudarle!
             </p>
             <a className="btn btn-amarillo" href="/login" style={{ display: 'inline-block', marginTop: '0.4rem' }}>
