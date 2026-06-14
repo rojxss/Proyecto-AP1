@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { consultarLLM, type ContextoInstitucional } from '@/lib/llm/adapter'
+import AvatarAyarquin from '@/components/chatbot/AvatarAyarquin'
 
 // ── Server Action ─────────────────────────────────────────────────────────────
 
@@ -224,23 +225,7 @@ export default async function ChatbotPadrePage() {
 
       {/* Encabezado de Ayarquín */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.2rem' }}>
-        {/* Imagen de Ayarquín — reemplazar /ayarquin.png con el archivo real en /public */}
-        <div style={{
-          width: '72px', height: '72px', borderRadius: '50%',
-          background: 'var(--verde-100)', border: '3px solid var(--verde-500)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, overflow: 'hidden',
-        }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/ayarquin.png"
-            alt="Ayarquín"
-            width={72} height={72}
-            style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-          />
-          <span style={{ fontSize: '2.2rem', display: 'none' }} className="ayarquin-fallback">🦉</span>
-        </div>
+        <AvatarAyarquin size={72} />
         <div>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.1rem' }}>Ayarquín 🦉</h1>
           <p style={{ color: 'var(--tinta-suave)', fontSize: '0.85rem', margin: 0 }}>
@@ -265,18 +250,7 @@ export default async function ChatbotPadrePage() {
       }}>
         {logs.length === 0 ? (
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '50%',
-              background: 'var(--verde-100)', border: '2px solid var(--verde-500)',
-              flexShrink: 0, overflow: 'hidden',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/ayarquin.png" alt="" width={36} height={36}
-                style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; const next = e.currentTarget.nextElementSibling as HTMLElement | null; if (next) next.style.display = 'block' }} />
-              <span style={{ fontSize: '1.3rem', display: 'none' }}>🦉</span>
-            </div>
+            <AvatarAyarquin size={36} />
             <div style={{
               background: '#fff', border: '1px solid var(--linea)',
               borderRadius: '4px 16px 16px 16px',
@@ -303,18 +277,7 @@ export default async function ChatbotPadrePage() {
               </div>
               {/* Respuesta de Ayarquín */}
               <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '0.5rem' }}>
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '50%',
-                  background: 'var(--verde-100)', border: '2px solid var(--verde-500)',
-                  flexShrink: 0, overflow: 'hidden',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/ayarquin.png" alt="Ayarquín" width={36} height={36}
-                    style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; const next = e.currentTarget.nextElementSibling as HTMLElement | null; if (next) next.style.display = 'block' }} />
-                  <span style={{ fontSize: '1.3rem', display: 'none' }}>🦉</span>
-                </div>
+                <AvatarAyarquin size={36} />
                 <div style={{
                   background: '#fff', border: '1px solid var(--linea)',
                   borderRadius: '4px 16px 16px 16px',
