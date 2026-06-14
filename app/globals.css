@@ -451,7 +451,7 @@ img, svg {
 /* ─── Sección principal con carrusel lateral ─────────────────────────────── */
 .seccion-galeria {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.45fr;
   gap: 1.6rem;
   align-items: start;
 }
