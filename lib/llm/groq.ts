@@ -65,6 +65,7 @@ export async function consultarGroq(
 ): Promise<RespuestaLLM> {
   const apiKey = process.env.LLM_API_KEY
   if (!apiKey) {
+    console.error('[Groq] LLM_API_KEY no está configurada. Verifique las variables de entorno.')
     throw new Error('LLM_API_KEY no configurada para el proveedor Groq')
   }
 
